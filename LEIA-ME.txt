@@ -1,0 +1,227 @@
+============================================================
+     JARVIS - MORDOMO VIRTUAL PESSOAL
+     Guia de Instalacao
+============================================================
+
+
+O que e o Jarvis?
+-----------------
+O Jarvis e um assistente pessoal com inteligencia artificial
+que roda 100% no seu computador. Ele pode:
+  - Abrir e fechar programas pela voz
+  - Monitorar seu PC (CPU, RAM, disco, temperatura)
+  - Pesquisar na internet
+  - Criar e executar codigos
+  - Gerenciar arquivos
+  - Criar lembretes
+  - Falar como um mordomo formal
+
+
+REQUISITOS
+----------
+  - Windows 10 ou 11
+  - Python 3.11 (ou superior)
+  - Ollama (para a inteligencia artificial)
+  - Conexao com a internet (para instalar dependencias)
+
+
+============================================================
+  INSTALACAO (Metodo 1 - Mais Facil)
+============================================================
+
+1. Clique duas vezes no arquivo:
+     "Instalar Jarvis.bat"
+
+2. Aguarde a instalacao concluir.
+
+3. Pronto! Clique em "Jarvis.bat" para usar.
+
+
+============================================================
+  INSTALACAO (Metodo 2 - PowerShell)
+============================================================
+
+1. Clique com o botao direito no arquivo:
+     "Instalar Jarvis.ps1"
+
+2. Selecione "Executar com o PowerShell".
+   (Se pedir permissao, digite "S" e Enter)
+
+3. Aguarde a instalacao concluir.
+
+4. Pronto! Clique em "Jarvis.bat" para usar.
+
+
+============================================================
+  INSTALACAO (Metodo 3 - Manual)
+============================================================
+
+1. Abra o terminal (cmd ou PowerShell) na pasta do Jarvis.
+
+2. Execute os comandos:
+
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+
+3. Instale o Ollama: https://ollama.com/download
+
+4. Rode: ollama serve
+
+5. Para usar: python main.py
+
+
+============================================================
+  INSTALAR O OLLAMA (Obrigatorio)
+============================================================
+
+O Jarvis precisa do Ollama para funcionar.
+
+1. Acesse: https://ollama.com/download
+
+2. Baixe e instale o Ollama para Windows.
+
+3. Abra o terminal e rode:
+     ollama serve
+
+4. Baixe um modelo (em outro terminal):
+     ollama pull llama3.2
+
+5. Pronto! O Jarvis ja vai usar o modelo automaticamente.
+
+
+============================================================
+  COMO USAR
+============================================================
+
+GUI (Interface Grafica):
+  Clique duas vezes em "Jarvis.bat"
+  Ou rode: python main.py
+
+Terminal:
+  python terminal.py
+
+
+============================================================
+  COMANDOS DE VOZ
+============================================================
+
+Diga "Jarvis" seguido do comando:
+
+  "Jarvis, abre o discord"
+  "Jarvis, abre o spotify no segundo monitor"
+  "Jarvis, fecha o chrome"
+  "Jarvis, monitorar pc"
+  "Jarvis, que horas sao"
+  "Jarvis, pesquisar na internet por receitas"
+  "Jarvis, cria um codigo em python para calcular fibonacci"
+  "Jarvis, lembra de beber agua em 30 minutos"
+  "Jarvis, lista os arquivos na area de trabalho"
+  "Jarvis, abre o vs code no monitor 2"
+
+
+============================================================
+  COMANDOS DO TERMINAL
+============================================================
+
+  falar            - Ativa o microfone para um comando
+  escuta on        - Ativa escuta continua (ativa "Jarvis")
+  escuta off       - Desativa escuta continua
+  trocar voz ana   - Troca a voz para Ana
+  velocidade voz 1.5 - Ajusta velocidade da fala
+  arquivos codigo  - Lista arquivos do Jarvis
+  parar            - Interrompe a fala
+  sair             - Fecha o Jarvis
+
+
+============================================================
+  VOZES DISPONIVEIS
+============================================================
+
+  Antonio   - Voz masculina
+  Francisca - Voz feminina
+  Giovanna  - Voz feminina
+  Valerio   - Voz masculina
+  Thalita   - Voz feminina
+
+
+============================================================
+  TROUBLESHOOTING (Problemas Comuns)
+============================================================
+
+PROBLEMA: "Ollama nao esta rodando"
+SOLUCAO: Abra o terminal e rode: ollama serve
+
+PROBLEMA: "Nao consegui abrir [programa]"
+SOLUCAO: Verifique se o programa esta instalado.
+
+PROBLEMA: Microfone nao funciona
+SOLUCAO: Verifique as permissoes de microfone nas
+         configuracoes do Windows.
+
+PROBLEMA: Erro de Python
+SOLUCAO: Instale Python 3.11 em:
+         https://www.python.org/downloads/release/python-3119/
+         Marque "Add Python to PATH".
+
+PROBLEMA: Erro de dependencia
+SOLUCAO: Rode no terminal:
+         venv\Scripts\activate
+         pip install --upgrade -r requirements.txt
+
+
+============================================================
+  ATUALIZACAO ENTRE PC
+============================================================
+
+Para manter varios PCs sincronizados:
+
+1. Coloque o Jarvis no GitHub (veja GITHUB.txt).
+
+2. Sempre que fizer mudancas, rode:
+     git add .
+     git commit -m "minha mudanca"
+     git push
+
+3. No outro PC, clique duas vezes em "atualizar.bat".
+   Ou rode: git pull
+
+Cada PC mantem seus proprios lembretes e configuracoes.
+
+
+============================================================
+  ESTRUTURA DE ARQUIVOS
+============================================================
+
+  Jarvis/
+  |-- main.py              <- Ponto de entrada (GUI)
+  |-- terminal.py          <- Interface de terminal
+  |-- gui.py               <- Interface grafica
+  |-- brain.py             <- Inteligencia artificial (Ollama)
+  |-- voice.py             <- Reconhecimento e síntese de voz
+  |-- system_control.py    <- Controle do PC
+  |-- file_manager.py      <- Gerenciamento de arquivos
+  |-- web_search.py        <- Pesquisa na internet
+  |-- code_runner.py       <- Execucao de codigo
+  |-- reminders.py         <- Lembretes
+  |-- developer.py         <- Modo desenvolvedor
+  |-- requirements.txt     <- Dependencias
+  |-- Jarvis.bat           <- Atalho para iniciar
+  |-- Instalar Jarvis.bat  <- Instalador automatico
+  |-- Instalar Jarvis.ps1  <- Instalador PowerShell
+  |-- atualizar.bat        <- Atualiza pelo GitHub
+  |-- atualizar.ps1        <- Atualiza pelo GitHub (PowerShell)
+  |-- .gitignore           <- Arquivos ignorados pelo Git
+  |-- GITHUB.txt           <- Como colocar no GitHub
+  |-- LEIA-ME.txt          <- Este arquivo
+  |-- venv/                <- Ambiente virtual Python
+
+
+============================================================
+  CREDITOS
+============================================================
+
+Jarvis - Mordomo Virtual Pessoal
+Criado com Python, Ollama, e muito carinho.
+
+============================================================

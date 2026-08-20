@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+backups/
+lembretes.json
+*.mp3
+*.wav
+.env
+codigos/temp_*.py
