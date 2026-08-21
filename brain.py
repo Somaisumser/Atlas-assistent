@@ -66,7 +66,7 @@ def _chat_ollama(mensagem, historico, modelo):
 
 
 def _chat_gemini(mensagem, historico, modelo, api_key):
-    url = f"{GEMINI_API_URL}/{modelo or GEMINI_MODELS[0]}:generateContent?key={api_key}"
+    url = f"{GEMINI_API_URL}/{modelo or GEMINI_MODELS[0]}:generateContent"
 
     contents = []
     if historico:
@@ -80,6 +80,7 @@ def _chat_gemini(mensagem, historico, modelo, api_key):
 
     resp = _session.post(
         url,
+        headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
         json={"contents": contents, "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024}},
         timeout=30,
     )
