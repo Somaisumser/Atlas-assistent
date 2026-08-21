@@ -157,6 +157,7 @@ def open_program(nome: str, monitor: int = None) -> str:
         "powerpoint": "PowerPoint",
         "notepad": "Bloco de Notas",
         "explorer": "Explorador de Arquivos",
+        "opera": "Opera",
     }
 
     # Programas que estao no PATH do Windows (start resolve direto)
@@ -165,6 +166,7 @@ def open_program(nome: str, monitor: int = None) -> str:
         "chrome": "chrome",
         "firefox": "firefox",
         "edge": "msedge",
+        "opera": "opera",
         "explorador": "explorer",
         "gerenciador": "explorer",
         "bloc de notas": "notepad",
@@ -202,6 +204,11 @@ def open_program(nome: str, monitor: int = None) -> str:
         ],
         "java": [
             "C:/Program Files/Java/*/bin/javaw.exe",
+        ],
+        "opera": [
+            "~/AppData/Local/Programs/Opera/launcher.exe",
+            "C:/Program Files/Opera/launcher.exe",
+            "C:/Program Files (x86)/Opera/launcher.exe",
         ],
     }
 
@@ -296,12 +303,29 @@ def close_program(nome: str) -> str:
     nome = nome.lower().strip()
     fechou = False
 
+    # Mapeamento de nomes para processos
+    nomes_processo = {
+        "opera": ["opera", "opera.exe", "opera browser"],
+        "chrome": ["chrome", "chrome.exe"],
+        "firefox": ["firefox", "firefox.exe"],
+        "edge": ["msedge", "msedge.exe"],
+        "discord": ["discord", "discord.exe"],
+        "spotify": ["spotify", "spotify.exe"],
+        "steam": ["steam", "steam.exe"],
+        "vs code": ["code", "code.exe"],
+        "code": ["code", "code.exe"],
+    }
+
+    nomes_para_buscar = nomes_processo.get(nome, [nome])
+
     for proc in psutil.process_iter(["name"]):
         try:
             pname = proc.info["name"].lower().replace(".exe", "")
-            if nome in pname or pname in nome:
-                proc.terminate()
-                fechou = True
+            for n in nomes_para_buscar:
+                if n in pname or pname in n:
+                    proc.terminate()
+                    fechou = True
+                    break
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
