@@ -131,67 +131,104 @@ class JarvisApp(ctk.CTk):
     def _open_settings(self):
         win = ctk.CTkToplevel(self)
         win.title("Configuracoes")
-        win.geometry("420x520")
+        win.geometry("480x560")
         win.configure(fg_color=BG)
         win.grab_set()
         tab = ctk.CTkTabview(win, fg_color=PANEL, segmented_button_fg_color=BG, segmented_button_selected_color=ACCENT, segmented_button_unselected_color=PANEL, text_color=TEXT, corner_radius=10)
         tab.pack(padx=15, pady=15, fill="both", expand=True)
 
         aba_voz = tab.add("Voz")
-        ctk.CTkLabel(aba_voz, text="Voz do Jarvis", font=ctk.CTkFont(size=14, weight="bold"), text_color=TEXT).pack(anchor="w", pady=(5, 10))
+        scroll_voz = ctk.CTkScrollableFrame(aba_voz, fg_color="transparent")
+        scroll_voz.pack(fill="both", expand=True)
+
+        box_voz = ctk.CTkFrame(scroll_voz, fg_color="#1a1a3a", corner_radius=8)
+        box_voz.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_voz, text="Voz do Jarvis", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
         self._voice_var = ctk.StringVar(value=self.vozelecionada)
         for nome, voz_id in VOZES.items():
-            ctk.CTkRadioButton(aba_voz, text=f"{nome} ({voz_id})", variable=self._voice_var, value=nome, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=12)).pack(anchor="w", pady=2)
-        ctk.CTkLabel(aba_voz, text="Velocidade da voz:", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", pady=(15, 5))
-        self._speed_slider = ctk.CTkSlider(aba_voz, from_=0.5, to=2.0, number_of_steps=15, width=280, fg_color=PANEL, progress_color=ACCENT, button_color=ACCENT, button_hover_color=ACCENT_DIM)
+            ctk.CTkRadioButton(box_voz, text=f"{nome}  ({voz_id})", variable=self._voice_var, value=nome, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13)).pack(anchor="w", pady=3, padx=(20, 0))
+        ctk.CTkFrame(box_voz, fg_color="transparent", height=8).pack()
+
+        box_vel = ctk.CTkFrame(scroll_voz, fg_color="#1a1a3a", corner_radius=8)
+        box_vel.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_vel, text="Velocidade da voz", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        self._speed_slider = ctk.CTkSlider(box_vel, from_=0.5, to=2.0, number_of_steps=15, width=380, fg_color=PANEL, progress_color=ACCENT, button_color=ACCENT, button_hover_color=ACCENT_DIM)
         self._speed_slider.set(self.velocidade_voz)
-        self._speed_slider.pack(anchor="w")
-        self._speed_label = ctk.CTkLabel(aba_voz, text=f"Velocidade: {self.velocidade_voz:.1f}x", text_color=TEXT, font=ctk.CTkFont(size=11))
-        self._speed_label.pack(anchor="w")
+        self._speed_slider.pack(anchor="w", padx=(20, 0))
+        self._speed_label = ctk.CTkLabel(box_vel, text=f"Velocidade: {self.velocidade_voz:.1f}x", text_color=TEXT, font=ctk.CTkFont(size=13))
+        self._speed_label.pack(anchor="w", padx=(20, 0), pady=(5, 0))
         self._speed_slider.configure(command=lambda v: self._speed_label.configure(text=f"Velocidade: {v:.1f}x"))
-        ctk.CTkButton(aba_voz, text="Testar voz", fg_color="#2a2a4a", hover_color="#3a3a5a", text_color=TEXT, command=lambda: threading.Thread(target=speak, args=("Teste de voz.", self._voice_var.get(), self._speed_slider.get()), daemon=True).start()).pack(pady=(15, 0))
+        ctk.CTkButton(box_vel, text="Testar voz", fg_color="#2a2a4a", hover_color="#3a3a5a", text_color=TEXT, font=ctk.CTkFont(size=12), command=lambda: threading.Thread(target=speak, args=("Teste de voz.", self._voice_var.get(), self._speed_slider.get()), daemon=True).start()).pack(pady=(10, 12), padx=(20, 0), anchor="w")
 
         aba_config = tab.add("Config")
-        ctk.CTkLabel(aba_config, text="Configuracoes gerais", font=ctk.CTkFont(size=14, weight="bold"), text_color=TEXT).pack(anchor="w", pady=(5, 10))
+        scroll_config = ctk.CTkScrollableFrame(aba_config, fg_color="transparent")
+        scroll_config.pack(fill="both", expand=True)
 
-        ctk.CTkLabel(aba_config, text="Modelo Ollama:", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w")
+        box_modelo = ctk.CTkFrame(scroll_config, fg_color="#1a1a3a", corner_radius=8)
+        box_modelo.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_modelo, text="Modelo Ollama", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
 
         self._model_var = ctk.StringVar(value="llama3.2")
         self._modelos_info = {}
 
-        model_frame = ctk.CTkFrame(aba_config, fg_color="transparent")
-        model_frame.pack(fill="x", pady=(0, 10))
+        model_frame = ctk.CTkFrame(box_modelo, fg_color="transparent")
+        model_frame.pack(fill="x", padx=(20, 12), pady=(0, 8))
 
         self._model_combo = ctk.CTkOptionMenu(
             model_frame, values=["Carregando..."], variable=self._model_var,
             fg_color=PANEL, button_color="#1a1a3a", button_hover_color=ACCENT, text_color=TEXT,
-            width=260, font=ctk.CTkFont(size=11)
+            width=280, font=ctk.CTkFont(size=12)
         )
         self._model_combo.pack(side="left", fill="x", expand=True)
 
         ctk.CTkButton(
-            model_frame, text="\U0001f504", width=30, height=28, corner_radius=6,
+            model_frame, text="\U0001f504", width=32, height=30, corner_radius=6,
             fg_color="#2a2a4a", hover_color="#3a3a5a", text_color=TEXT,
-            font=ctk.CTkFont(size=12, weight="bold"),
+            font=ctk.CTkFont(size=13, weight="bold"),
             command=self._atualizar_modelos
-        ).pack(side="left", padx=(5, 0))
+        ).pack(side="left", padx=(8, 0))
 
         self._model_info_label = ctk.CTkLabel(
-            aba_config, text="", text_color=MUTED, font=ctk.CTkFont(size=10), justify="left"
+            box_modelo, text="", text_color=MUTED, font=ctk.CTkFont(size=11), justify="left"
         )
-        self._model_info_label.pack(anchor="w", pady=(5, 10))
+        self._model_info_label.pack(anchor="w", padx=(20, 12), pady=(0, 10))
 
         self._model_combo.configure(command=lambda v: self._atualizar_info_modelo(v))
 
-        ctk.CTkLabel(aba_config, text="Host Ollama:", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w")
-        self._host_entry = ctk.CTkEntry(aba_config, fg_color=PANEL, border_color="#1a1a3a", text_color=TEXT, placeholder_text="http://localhost:11434")
-        self._host_entry.pack(fill="x", pady=(0, 10))
+        box_host = ctk.CTkFrame(scroll_config, fg_color="#1a1a3a", corner_radius=8)
+        box_host.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_host, text="Host Ollama", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        self._host_entry = ctk.CTkEntry(box_host, fg_color=PANEL, border_color="#1a1a3a", text_color=TEXT, placeholder_text="http://localhost:11434", height=36, font=ctk.CTkFont(size=12))
+        self._host_entry.pack(fill="x", padx=(20, 12), pady=(0, 12))
 
         self.after(100, self._atualizar_modelos)
 
         aba_sobre = tab.add("Sobre")
-        ctk.CTkLabel(aba_sobre, text="Jarvis - Assistente Pessoal", font=ctk.CTkFont(size=16, weight="bold"), text_color=ACCENT).pack(pady=(20, 10))
-        ctk.CTkLabel(aba_sobre, text="Assistente virtual local e gratuito.\nUsa Ollama como cerebro.\nVozes neurais da Microsoft.\n\nFuncionalidades:\n- Abrir/fechar programas\n- Criar e rodar codigo\n- Pesquisar na internet\n- Monitorar o PC\n- Gerenciar arquivos\n- Lembretes\n- Escuta dinamica\n- Modo desenvolvedor", text_color=TEXT, font=ctk.CTkFont(size=12), justify="left").pack(anchor="w", padx=15)
+        scroll_sobre = ctk.CTkScrollableFrame(aba_sobre, fg_color="transparent")
+        scroll_sobre.pack(fill="both", expand=True)
+
+        box_sobre = ctk.CTkFrame(scroll_sobre, fg_color="#1a1a3a", corner_radius=8)
+        box_sobre.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_sobre, text="Jarvis - Assistente Pessoal", font=ctk.CTkFont(size=18, weight="bold"), text_color=ACCENT).pack(pady=(20, 10))
+        ctk.CTkLabel(box_sobre, text="Assistente virtual local e gratuito.\nUsa Ollama como cerebro.\nVozes neurais da Microsoft.", text_color=TEXT, font=ctk.CTkFont(size=13), justify="center").pack(padx=20)
+
+        box_func = ctk.CTkFrame(scroll_sobre, fg_color="#1a1a3a", corner_radius=8)
+        box_func.pack(fill="x", pady=(8, 0))
+        ctk.CTkLabel(box_func, text="Funcionalidades", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        funcionalidades = [
+            "Abrir/fechar programas pela voz",
+            "Criar e rodar codigo",
+            "Pesquisar na internet",
+            "Monitorar o PC em tempo real",
+            "Gerenciar arquivos",
+            "Lembretes e avisos",
+            "Escuta dinamica continua",
+            "Modo desenvolvedor",
+            "Atualizacoes automaticas",
+        ]
+        for func in funcionalidades:
+            ctk.CTkLabel(box_func, text=f"\u2713  {func}", font=ctk.CTkFont(size=13), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=2)
+        ctk.CTkFrame(box_func, fg_color="transparent", height=10).pack()
 
         def salvar():
             self.vozelecionada = self._voice_var.get()
@@ -201,7 +238,7 @@ class JarvisApp(ctk.CTk):
             self.modelo_ollama = info.get("nome", "llama3.2")
             self._atualizar_host_ollama()
             win.destroy()
-        ctk.CTkButton(win, text="Salvar", fg_color=ACCENT_DIM, hover_color=ACCENT, text_color=BG, font=ctk.CTkFont(size=13, weight="bold"), command=salvar).pack(pady=(0, 15), padx=15, fill="x")
+        ctk.CTkButton(win, text="Salvar", fg_color=ACCENT_DIM, hover_color=ACCENT, text_color=BG, font=ctk.CTkFont(size=14, weight="bold"), height=40, corner_radius=10, command=salvar).pack(pady=(0, 15), padx=15, fill="x")
 
     def _open_help(self):
         win = ctk.CTkToplevel(self)
