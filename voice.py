@@ -95,49 +95,54 @@ class EscutaDinamica:
         global _ouvindo
         print(f"[Escuta Dinamica] Pronta. Diga '{self.palavra_ativacao}'...")
 
-        with sr.Microphone(sample_rate=16000) as source:
-            self._reconhecedor.adjust_for_ambient_noise(source, duration=1)
-            print(f"[Escuta Dinamica] Noise calibrado. Aguardando...")
+        while self.ativo:
+            try:
+                with sr.Microphone(sample_rate=16000) as source:
+                    self._reconhecedor.adjust_for_ambient_noise(source, duration=0.5)
+                    print(f"[Escuta Dinamica] Noise calibrado. Aguardando...")
 
-            while self.ativo:
-                try:
-                    audio = self._reconhecedor.listen(source, timeout=1.5, phrase_time_limit=10)
-
-                    try:
-                        texto = self._reconhecedor.recognize_google(audio, language="pt-BR").lower()
-                        print(f"[Escuta Dinamica] Ouvi: {texto}")
-                    except sr.UnknownValueError:
-                        continue
-                    except sr.RequestError:
-                        time.sleep(0.5)
-                        continue
-
-                    if self.palavra_ativacao not in texto:
-                        continue
-
-                    _ouvindo = True
-                    comando = texto.split(self.palavra_ativacao, 1)
-                    if len(comando) > 1 and comando[1].strip():
-                        cmd = comando[1].strip()
-                        print(f"[Escuta Dinamica] Comando: {cmd}")
-                        threading.Thread(target=self.callback, args=(cmd,), daemon=True).start()
-                    else:
-                        print("[Escuta Dinamica] Diga seu comando...")
+                    while self.ativo:
                         try:
-                            audio2 = self._reconhecedor.listen(source, timeout=4, phrase_time_limit=10)
-                            texto2 = self._reconhecedor.recognize_google(audio2, language="pt-BR").lower()
-                            print(f"[Escuta Dinamica] Comando: {texto2}")
-                            threading.Thread(target=self.callback, args=(texto2,), daemon=True).start()
-                        except Exception:
-                            print("[Escuta Dinamica] Nao entendi o comando.")
-                    _ouvindo = False
-                    print("[Escuta Dinamica] Aguardando...")
+                            audio = self._reconhecedor.listen(source, timeout=1.5, phrase_time_limit=10)
 
-                except sr.WaitTimeoutError:
-                    continue
-                except Exception as e:
-                    print(f"[Escuta Dinamica] Erro: {e}")
-                    time.sleep(0.1)
+                            try:
+                                texto = self._reconhecedor.recognize_google(audio, language="pt-BR").lower()
+                                print(f"[Escuta Dinamica] Ouvi: {texto}")
+                            except sr.UnknownValueError:
+                                continue
+                            except sr.RequestError:
+                                time.sleep(0.5)
+                                continue
+
+                            if self.palavra_ativacao not in texto:
+                                continue
+
+                            _ouvindo = True
+                            comando = texto.split(self.palavra_ativacao, 1)
+                            if len(comando) > 1 and comando[1].strip():
+                                cmd = comando[1].strip()
+                                print(f"[Escuta Dinamica] Comando: {cmd}")
+                                threading.Thread(target=self.callback, args=(cmd,), daemon=True).start()
+                            else:
+                                print("[Escuta Dinamica] Diga seu comando...")
+                                try:
+                                    audio2 = self._reconhecedor.listen(source, timeout=4, phrase_time_limit=10)
+                                    texto2 = self._reconhecedor.recognize_google(audio2, language="pt-BR").lower()
+                                    print(f"[Escuta Dinamica] Comando: {texto2}")
+                                    threading.Thread(target=self.callback, args=(texto2,), daemon=True).start()
+                                except Exception:
+                                    print("[Escuta Dinamica] Nao entendi o comando.")
+                            _ouvindo = False
+                            print("[Escuta Dinamica] Aguardando...")
+
+                        except sr.WaitTimeoutError:
+                            continue
+                        except Exception as e:
+                            print(f"[Escuta Dinamica] Erro no loop: {e}")
+                            time.sleep(0.1)
+            except Exception as e:
+                print(f"[Escuta Dinamica] Erro ao abrir microfone: {e}")
+                time.sleep(1)
 
 
 async def _edge_speak(texto: str, voz: str, velocidade: float = 1.0):
