@@ -156,8 +156,8 @@ def _extrair_codigo_completo(resposta, num_linhas_esperado):
     return None
 
 
-def sugerir_modificacao(nome_arquivo, descricao, conteudo_atual):
-    """Usa Ollama para sugerir uma modificacao no codigo."""
+def sugerir_modificacao(nome_arquivo, descricao, conteudo_atual, provider="ollama", api_key=None, modelo=None):
+    """Usa IA para sugerir uma modificacao no codigo."""
     num_linhas = len(conteudo_atual.splitlines())
 
     prompt = f"""INSTRUCAO CRITICA: Voce deve retornar o ARQUIVO COMPLETO com a mudanca aplicada.
@@ -185,7 +185,7 @@ O ARQUIVO DEVE CONTER TODAS ESTAS FUNCOES:
 
 RETORNE O ARQUIVO COMPLETO INTEIRO:"""
 
-    resposta = chat(prompt)
+    resposta = chat(prompt, provider=provider, api_key=api_key, modelo=modelo)
     codigo = _extrair_codigo_completo(resposta, num_linhas)
 
     if codigo:
@@ -198,13 +198,13 @@ RETORNE O ARQUIVO COMPLETO INTEIRO:"""
     return None
 
 
-def aplicar_modificacao(nome_arquivo, descricao):
+def aplicar_modificacao(nome_arquivo, descricao, provider="ollama", api_key=None, modelo=None):
     """Fluxo completo: ler, sugerir, validar, mostrar diff."""
     conteudo, erro = ler_arquivo(nome_arquivo)
     if erro:
         return None, erro, None
 
-    novo_conteudo = sugerir_modificacao(nome_arquivo, descricao, conteudo)
+    novo_conteudo = sugerir_modificacao(nome_arquivo, descricao, conteudo, provider=provider, api_key=api_key, modelo=modelo)
     if not novo_conteudo:
         return None, "Nao consegui gerar a modificacao. Verifique se o Ollama esta rodando.", None
 

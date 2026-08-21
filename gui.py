@@ -505,7 +505,7 @@ class JarvisApp(ctk.CTk):
             resultado_text.insert("1.0", "Gerando modificacao... Backup sendo criado...")
             resultado_text.configure(state="disabled")
             def tarefa():
-                novo, diff, original = aplicar_modificacao(arquivo, desc)
+                novo, diff, original = aplicar_modificacao(arquivo, desc, provider=self._provider, api_key=self._get_api_key(), modelo=self._get_modelo())
                 if novo and diff:
                     self.after(0, lambda: _mostrar_resultado(diff, novo, arquivo))
                 else:
@@ -660,13 +660,13 @@ class JarvisApp(ctk.CTk):
             self._set_status("Pesquisando na internet...")
             query = search_match.group(1)
             resultados = search(query)
-            resp = chat(f"Resuma de forma curta:\n{resultados}", modelo=self.modelo_ollama, provider=self._provider, api_key=self._get_api_key())
+            resp = chat(f"Resuma de forma curta:\n{resultados}", modelo=self._get_modelo(), provider=self._provider, api_key=self._get_api_key())
             self._finish(text, resp)
             return
         if not self.pensando:
             return
         self._set_status("Pensando...")
-        resp = chat(text, self.historico, modelo=self.modelo_ollama, provider=self._provider, api_key=self._get_api_key())
+        resp = chat(text, self.historico, modelo=self._get_modelo(), provider=self._provider, api_key=self._get_api_key())
         self._finish(text, resp)
 
     def _limpar_artigo(self, texto):
@@ -761,7 +761,7 @@ class JarvisApp(ctk.CTk):
 
     def _handle_code(self, lang, task):
         prompt = f"Crie um codigo em {lang} que: {task}. Responda APENAS com o codigo entre crases triplas."
-        resposta = chat(prompt, modelo=self.modelo_ollama)
+        resposta = chat(prompt, modelo=self._get_modelo(), provider=self._provider, api_key=self._get_api_key())
         m = re.search(r"```(?:\w+)?\s*\n(.*?)```", resposta, re.DOTALL)
         if m:
             codigo = m.group(1).strip()
@@ -846,6 +846,12 @@ class JarvisApp(ctk.CTk):
         if self._provider == "gemini":
             return self._gemini_key
         return None
+
+    def _get_modelo(self):
+        """Retorna o modelo correto baseado no provider."""
+        if self._provider == "gemini":
+            return self._gemini_model
+        return self.modelo_ollama
 
     def _load_config(self):
         """Carrega configuracoes salvas."""
