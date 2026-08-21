@@ -97,6 +97,7 @@ class JarvisApp(ctk.CTk):
         title_box.pack(side="left")
         ctk.CTkLabel(title_box, text="JARVIS", font=ctk.CTkFont(size=28, weight="bold"), text_color=ACCENT).pack(anchor="w")
         ctk.CTkLabel(title_box, text="assistente pessoal", font=ctk.CTkFont(size=11), text_color=MUTED).pack(anchor="w")
+        ctk.CTkButton(header, text="?", width=40, height=32, corner_radius=10, fg_color=PANEL, hover_color="#1a1a3a", text_color=TEXT, font=ctk.CTkFont(size=16, weight="bold"), command=self._open_help).pack(side="right", padx=(0, 5))
         ctk.CTkButton(header, text="\u2699", width=40, height=32, corner_radius=10, fg_color=PANEL, hover_color="#1a1a3a", text_color=TEXT, font=ctk.CTkFont(size=16), command=self._open_settings).pack(side="right")
 
         self.status = ctk.CTkLabel(self, text="Pronto", font=ctk.CTkFont(size=12), text_color=MUTED)
@@ -169,7 +170,7 @@ class JarvisApp(ctk.CTk):
         self._model_combo.pack(side="left", fill="x", expand=True)
 
         ctk.CTkButton(
-            model_frame, text="🔄", width=30, height=28, corner_radius=6,
+            model_frame, text="\U0001f504", width=30, height=28, corner_radius=6,
             fg_color="#2a2a4a", hover_color="#3a3a5a", text_color=TEXT,
             font=ctk.CTkFont(size=12, weight="bold"),
             command=self._atualizar_modelos
@@ -201,6 +202,53 @@ class JarvisApp(ctk.CTk):
             self._atualizar_host_ollama()
             win.destroy()
         ctk.CTkButton(win, text="Salvar", fg_color=ACCENT_DIM, hover_color=ACCENT, text_color=BG, font=ctk.CTkFont(size=13, weight="bold"), command=salvar).pack(pady=(0, 15), padx=15, fill="x")
+
+    def _open_help(self):
+        win = ctk.CTkToplevel(self)
+        win.title("Comandos do Jarvis")
+        win.geometry("500x600")
+        win.configure(fg_color=BG)
+        win.grab_set()
+
+        scroll = ctk.CTkScrollableFrame(win, fg_color=PANEL, corner_radius=10)
+        scroll.pack(padx=15, pady=15, fill="both", expand=True)
+
+        categorias = {
+            "Sistema": [
+                ("Monitorar PC", "qual o status do pc\ncomo esta o desempenho\nmonitorar pc\nverificar computador"),
+                ("Programas abertos", "quais programas estao abertos\no que esta rodando\nlista de programas"),
+                ("Abrir programa", "abra o discord\nabrir spotify\niniciar steam\nquero abrir o chrome"),
+                ("Fechar programa", "feche o discord\nfechar spotify\nencerrar steam"),
+                ("Abrir em monitor", "abra o discord no monitor 2\nabrir spotify no segundo monitor"),
+            ],
+            "Lembretes": [
+                ("Criar lembrete", "me avise em 5 minutos\nlembra de beber agua em 1 hora\navisar em 30 min"),
+                ("Ver lembretes", "meus lembretes\nlembretes\ncompromissos"),
+            ],
+            "Arquivos": [
+                ("Listar arquivos", "liste os arquivos em C:\\\nmostrar pastas em Documentos\nver conteudo de Downloads"),
+                ("Criar arquivo", "crie um arquivo notas.txt com conteudo\nnovo arquivo lista.md com itens"),
+                ("Deletar arquivo", "delete notas.txt\napague lixo.txt\nremover arquivo antigo"),
+            ],
+            "Pesquisa e Codigo": [
+                ("Pesquisar", "pesquise na internet\nprocure sobre python\nbusque notícias"),
+                ("Criar codigo", "crie um codigo em python para\ncrie um programa em java que"),
+            ],
+            "Voz": [
+                ("Trocar voz", "trocar voz para Antonio\nmudar voz para Francisca"),
+                ("Velocidade", "velocidade da voz 1.5\nvoz rapida\nvoz devagar"),
+                ("Listar vozes", "quais sao as vozes\nlistar vozes"),
+            ],
+            "Modo Desenvolvedor": [
+                ("Modificar codigo", "Use a aba Dev na GUI para modificar arquivos do Jarvis"),
+            ],
+        }
+
+        for categoria, comandos in categorias.items():
+            ctk.CTkLabel(scroll, text=f"  {categoria}", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 5))
+            for titulo, exemplos in comandos:
+                ctk.CTkLabel(scroll, text=titulo, font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", padx=(15, 0))
+                ctk.CTkLabel(scroll, text=exemplos, font=ctk.CTkFont(size=11), text_color=MUTED, anchor="w", justify="left").pack(anchor="w", padx=(25, 0), pady=(0, 5))
 
     def _abrir_pesquisa(self):
         win = ctk.CTkToplevel(self)
