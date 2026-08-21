@@ -206,7 +206,7 @@ class JarvisApp(ctk.CTk):
     def _open_help(self):
         win = ctk.CTkToplevel(self)
         win.title("Comandos do Jarvis")
-        win.geometry("450x520")
+        win.geometry("480x560")
         win.configure(fg_color=BG)
         win.grab_set()
 
@@ -214,10 +214,15 @@ class JarvisApp(ctk.CTk):
         tab.pack(padx=15, pady=15, fill="both", expand=True)
 
         def _add_comandos(aba, comandos):
+            scroll = ctk.CTkScrollableFrame(aba, fg_color="transparent")
+            scroll.pack(fill="both", expand=True)
             for titulo, exemplos in comandos:
-                ctk.CTkLabel(aba, text=titulo, font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", pady=(8, 2))
+                box = ctk.CTkFrame(scroll, fg_color="#1a1a3a", corner_radius=8)
+                box.pack(fill="x", pady=(0, 8), padx=(0, 5))
+                ctk.CTkLabel(box, text=titulo, font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(8, 4), padx=(12, 0))
                 for ex in exemplos:
-                    ctk.CTkLabel(aba, text=f"  \"{ex}\"", font=ctk.CTkFont(size=11), text_color=MUTED, anchor="w").pack(anchor="w", padx=(10, 0))
+                    ctk.CTkLabel(box, text=f"\u2022  {ex}", font=ctk.CTkFont(size=13), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=1)
+                ctk.CTkFrame(box, fg_color="transparent", height=6).pack()
 
         aba_sistema = tab.add("Sistema")
         _add_comandos(aba_sistema, [
