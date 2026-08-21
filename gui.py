@@ -83,6 +83,7 @@ class JarvisApp(ctk.CTk):
         self._provider = "ollama"
         self._gemini_key = ""
         self._gemini_model = "gemini-3.6-flash"
+        self._motor_voz = "google"
         self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
         self._load_config()
         self._build_ui()
@@ -168,6 +169,20 @@ class JarvisApp(ctk.CTk):
         self._speed_label.pack(anchor="w", padx=(20, 0), pady=(5, 0))
         self._speed_slider.configure(command=lambda v: self._speed_label.configure(text=f"Velocidade: {v:.1f}x"))
         ctk.CTkButton(box_vel, text="Testar voz", fg_color="#2a2a4a", hover_color="#3a3a5a", text_color=TEXT, font=ctk.CTkFont(size=12), command=lambda: threading.Thread(target=speak, args=("Teste de voz.", self._voice_var.get(), self._speed_slider.get()), daemon=True).start()).pack(pady=(10, 12), padx=(20, 0), anchor="w")
+
+        box_motor = ctk.CTkFrame(scroll_voz, fg_color="#1a1a3a", corner_radius=8)
+        box_motor.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_motor, text="Reconhecimento de Voz", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        self._motor_var = ctk.StringVar(value=self._motor_voz)
+        for motor, label, desc in [
+            ("google", "Google (Online)", "Precisa de internet, gratis"),
+            ("vosk", "Vosk (Offline)", "Funciona sem internet, ~50MB"),
+        ]:
+            frame = ctk.CTkFrame(box_motor, fg_color="transparent")
+            frame.pack(fill="x", padx=(20, 12), pady=2)
+            ctk.CTkRadioButton(frame, text=label, variable=self._motor_var, value=motor, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13)).pack(side="left")
+            ctk.CTkLabel(frame, text=desc, text_color=MUTED, font=ctk.CTkFont(size=11)).pack(side="left", padx=(8, 0))
+        ctk.CTkFrame(box_motor, fg_color="transparent", height=8).pack()
 
         aba_config = tab.add("Cerebro")
         scroll_config = ctk.CTkScrollableFrame(aba_config, fg_color="transparent")
@@ -276,6 +291,7 @@ class JarvisApp(ctk.CTk):
             self._provider = self._provider_var.get()
             self._gemini_key = self._gemini_key_entry.get().strip()
             self._gemini_model = self._gemini_model_var.get()
+            self._motor_voz = self._motor_var.get()
             self._atualizar_host_ollama()
             win.destroy()
         ctk.CTkButton(win, text="Salvar", fg_color=ACCENT_DIM, hover_color=ACCENT, text_color=BG, font=ctk.CTkFont(size=14, weight="bold"), height=40, corner_radius=10, command=salvar).pack(pady=(0, 15), padx=15, fill="x")
@@ -630,10 +646,10 @@ class JarvisApp(ctk.CTk):
             self.listen_btn.configure(text="Escuta: OFF", fg_color="#1a1a3a", text_color=MUTED)
             self._set_status("Escuta dinamica desligada")
         else:
-            self.escuta_dinamica = EscutaDinamica(callback=self._on_dynamic_voice)
+            self.escuta_dinamica = EscutaDinamica(callback=self._on_dynamic_voice, motor=self._motor_voz)
             self.escuta_dinamica.iniciar()
             self.listen_btn.configure(text="Escuta: ON", fg_color=GREEN, text_color=BG)
-            self._set_status("Diga 'Jarvis' para ativar", GREEN)
+            self._set_status(f"Diga 'Jarvis' para ativar ({self._motor_voz.upper()})", GREEN)
 
     def _process(self, text):
         self.pensando = True
@@ -876,6 +892,7 @@ class JarvisApp(ctk.CTk):
                 self._provider = cfg.get("provider", self._provider)
                 self._gemini_key = cfg.get("gemini_key", self._gemini_key)
                 self._gemini_model = cfg.get("gemini_model", self._gemini_model)
+                self._motor_voz = cfg.get("motor_voz", self._motor_voz)
         except Exception:
             pass
 
@@ -889,6 +906,7 @@ class JarvisApp(ctk.CTk):
                 "provider": self._provider,
                 "gemini_key": self._gemini_key,
                 "gemini_model": self._gemini_model,
+                "motor_voz": self._motor_voz,
             }
             with open(self._config_path, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=2)

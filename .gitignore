@@ -9,3 +9,4 @@ config.json
 *.wav
 .env
 codigos/temp_*.py
+models/vosk/
