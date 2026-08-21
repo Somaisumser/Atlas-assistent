@@ -41,68 +41,94 @@ Quando o usuario pedir algo geral (pergunta, conversa), responda como mordomo de
 
 NUNCA diga "Eu sou uma IA" ou "Sou um assistente". Voce e o JARVIS, mordomo pessoal do Senhor."""
 
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODELS = [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "gemma2-9b-it",
+    "mixtral-8x7b-32768",
+]
 
-def chat(mensagem: str, historico: list = None, modelo: str = None) -> str:
-    """Envia mensagem pro Ollama e retorna a resposta."""
-    modelo_usar = modelo or MODEL
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+GEMINI_MODELS = [
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+]
+
+
+def _chat_ollama(mensagem, historico, modelo):
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     if historico:
         messages.extend(historico[-10:])
     messages.append({"role": "user", "content": mensagem})
 
+    resp = _session.post(
+        f"{HOST}/api/chat",
+        json={"model": modelo or MODEL, "messages": messages, "stream": False, "keep_alive": "30m"},
+        timeout=120,
+    )
+    resp.raise_for_status()
+    return resp.json().get("message", {}).get("content", "Sem resposta.")
+
+
+def _chat_groq(mensagem, historico, modelo, api_key):
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    if historico:
+        messages.extend(historico[-10:])
+    messages.append({"role": "user", "content": mensagem})
+
+    resp = _session.post(
+        GROQ_API_URL,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={"model": modelo or GROQ_MODELS[0], "messages": messages, "temperature": 0.7, "max_tokens": 1024},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"]
+
+
+def _chat_gemini(mensagem, historico, modelo, api_key):
+    url = f"{GEMINI_API_URL}/{modelo or GEMINI_MODELS[0]}:generateContent?key={api_key}"
+
+    contents = []
+    if historico:
+        for msg in historico[-10:]:
+            role = "user" if msg["role"] == "user" else "model"
+            contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+    contents.append({"role": "user", "parts": [{"text": mensagem}]})
+
+    system_msg = {"role": "user", "parts": [{"text": SYSTEM_PROMPT}]}
+    contents.insert(0, system_msg)
+
+    resp = _session.post(
+        url,
+        json={"contents": contents, "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024}},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return data["candidates"][0]["content"]["parts"][0]["text"]
+
+
+def chat(mensagem: str, historico: list = None, modelo: str = None,
+         provider: str = "ollama", api_key: str = None) -> str:
+    """Envia mensagem e retorna a resposta. Provider: ollama, groq, gemini."""
     try:
-        resp = _session.post(
-            f"{HOST}/api/chat",
-            json={
-                "model": modelo_usar,
-                "messages": messages,
-                "stream": False,
-                "keep_alive": "30m",
-            },
-            timeout=120,
-        )
-        resp.raise_for_status()
-        return resp.json().get("message", {}).get("content", "Sem resposta.")
+        if provider == "groq" and api_key:
+            return _chat_groq(mensagem, historico, modelo, api_key)
+        elif provider == "gemini" and api_key:
+            return _chat_gemini(mensagem, historico, modelo, api_key)
+        else:
+            return _chat_ollama(mensagem, historico, modelo)
     except requests.ConnectionError:
         return "Erro: Ollama nao esta rodando. Abra o terminal e digite: ollama serve"
     except Exception as e:
         return f"Erro ao falar com o Jarvis: {e}"
 
 
-def chat_stream(mensagem: str, historico: list = None, modelo: str = None):
-    """Envia mensagem pro Ollama e yield chunks (streaming)."""
-    modelo_usar = modelo or MODEL
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    if historico:
-        messages.extend(historico[-10:])
-    messages.append({"role": "user", "content": mensagem})
-
-    try:
-        resp = _session.post(
-            f"{HOST}/api/chat",
-            json={
-                "model": modelo_usar,
-                "messages": messages,
-                "stream": True,
-                "keep_alive": "30m",
-            },
-            timeout=120,
-            stream=True,
-        )
-        resp.raise_for_status()
-        for line in resp.iter_lines():
-            if line:
-                data = json.loads(line)
-                chunk = data.get("message", {}).get("content", "")
-                if chunk:
-                    yield chunk
-    except requests.ConnectionError:
-        yield "Erro: Ollama nao esta rodando. Abra o terminal e digite: ollama serve"
-    except Exception as e:
-        yield f"Erro ao falar com o Jarvis: {e}"
-
-
-def listar_modelos() -> list:
+def listar_modelos_ollama() -> list:
     """Lista modelos disponiveis no Ollama."""
     try:
         resp = _session.get(f"{HOST}/api/tags", timeout=3)

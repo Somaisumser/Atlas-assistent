@@ -5,10 +5,11 @@ Rode com: python terminal.py
 import re
 import sys
 import os
+import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from brain import chat
+from brain import chat, GROQ_MODELS, GEMINI_MODELS
 from voice import listen, speak, VOZES, EscutaDinamica, stop_speak
 from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala
 from file_manager import list_dir, read_file, create_file, delete_file
@@ -21,6 +22,43 @@ HISTORICO = []
 VOZ_ATUAL = "Antonio"
 VELOCIDADE = 1.0
 escuta_dinamica = None
+_provider = "ollama"
+_groq_key = ""
+_gemini_key = ""
+_groq_model = "llama-3.3-70b-versatile"
+_gemini_model = "gemini-2.0-flash"
+_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+
+
+def _load_config():
+    global _provider, _groq_key, _gemini_key, _groq_model, _gemini_model
+    try:
+        if os.path.exists(_config_path):
+            with open(_config_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            _provider = cfg.get("provider", _provider)
+            _groq_key = cfg.get("groq_key", _groq_key)
+            _gemini_key = cfg.get("gemini_key", _gemini_key)
+            _groq_model = cfg.get("groq_model", _groq_model)
+            _gemini_model = cfg.get("gemini_model", _gemini_model)
+    except Exception:
+        pass
+
+
+def _get_api_key():
+    if _provider == "groq":
+        return _groq_key
+    elif _provider == "gemini":
+        return _gemini_key
+    return None
+
+
+def _get_model():
+    if _provider == "groq":
+        return _groq_model
+    elif _provider == "gemini":
+        return _gemini_model
+    return None
 
 
 def _limpar_artigo(texto):
@@ -191,7 +229,7 @@ def processar(texto):
         lang = code_match.group(1)
         task = code_match.group(2)
         prompt = f"Crie um codigo em {lang} que: {task}. Responda APENAS com o codigo entre crases triplas."
-        resp = chat(prompt)
+        resp = chat(prompt, provider=_provider, api_key=_get_api_key(), modelo=_get_model())
         m_code = re.search(r"```(?:\w+)?\s*\n(.*?)```", resp, re.DOTALL)
         if m_code:
             resultado = run_code(m_code.group(1).strip(), lang)
@@ -206,10 +244,10 @@ def processar(texto):
     if search_match:
         query = search_match.group(1)
         resultados = search(query)
-        return "Permita-me buscar essa informacao, Senhor.\n" + chat(f"Resuma de forma curta:\n{resultados}")
+        return "Permita-me buscar essa informacao, Senhor.\n" + chat(f"Resuma de forma curta:\n{resultados}", provider=_provider, api_key=_get_api_key(), modelo=_get_model())
 
     # Geral (IA)
-    return chat(texto, HISTORICO)
+    return chat(texto, HISTORICO, provider=_provider, api_key=_get_api_key(), modelo=_get_model())
 
 
 def main():
@@ -225,6 +263,8 @@ def main():
     print_colorido("Jarvis: Aos seus servicos, Senhor. Como posso ajuda-lo?", "verde")
 
     global escuta_dinamica
+    _load_config()
+    print_colorido(f"Provider: {_provider.upper()}", "amarelo")
     check_reminders(lambda msg: print_colorido(f"\n[Lembrete] {msg}", "amarelo"))
 
     while True:
