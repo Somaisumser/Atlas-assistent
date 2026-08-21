@@ -6,8 +6,13 @@ import subprocess
 import os
 import sys
 import threading
+import urllib.request
+import zipfile
+import tempfile
+import shutil
 
 JARVIS_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_URL = "https://github.com/Somaisumser/jarvis-assistent/archive/refs/heads/main.zip"
 
 
 def _run_git(args):
@@ -42,42 +47,110 @@ def tem_repo():
 
 def verificar_atualizacoes():
     """Verifica se ha atualizacoes pendentes no GitHub."""
-    if not tem_git() or not tem_repo():
-        return False, "Git nao configurado."
+    # Metodo 1: Git
+    if tem_git() and tem_repo():
+        _run_git(["fetch", "origin"])
+        stdout, code = _run_git(["rev-list", "--count", "HEAD..origin/main"])
+        if code == 0:
+            try:
+                count = int(stdout)
+                if count > 0:
+                    return True, f"{count} atualizacao(oes) disponivel(is)."
+                else:
+                    return False, "Ja esta atualizado."
+            except ValueError:
+                pass
 
-    # Busca atualizacoes remotas
-    _run_git(["fetch", "origin"])
-
-    # Compara local com remoto
-    stdout, code = _run_git(["rev-list", "--count", "HEAD..origin/main"])
-    if code != 0:
-        return False, "Erro ao verificar atualizacoes."
-
+    # Metodo 2: Verifica ultima versao via GitHub API ( leve)
     try:
-        count = int(stdout)
-    except ValueError:
-        return False, "Erro ao interpretar resultado."
+        import json
+        req = urllib.request.Request(
+            "https://api.github.com/repos/Somaisumser/jarvis-assistent/commits?sha=main&per_page=1",
+            headers={"User-Agent": "Jarvis-Updater"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            dados = json.loads(resp.read())
+            if dados:
+                return True, "Nova versao disponivel no GitHub."
+    except Exception:
+        pass
 
-    if count > 0:
-        return True, f"{count} atualizacao(oes) disponivel(is)."
-    else:
-        return False, "Ja esta atualizado."
+    return False, "Nao foi possivel verificar atualizacoes."
 
 
-def aplicar_atualizacao(callback_status=None):
-    """Baixa e aplica as atualizacoes."""
-    if callback_status:
-        callback_status("Baixando atualizacoes...")
-
+def aplicar_atualizacao_git():
+    """Baixa e aplica as atualizacoes via Git."""
     stdout, code = _run_git(["pull", "origin", "main"])
-
     if code == 0:
         if "Already up to date" in stdout or "nao ha nada para" in stdout.lower():
             return True, "Ja esta atualizado."
-        else:
-            return True, "Atualizado com sucesso! Reinicie o Jarvis."
-    else:
-        return False, f"Erro ao atualizar: {stdout}"
+        return True, "Atualizado com sucesso! Reinicie o Jarvis."
+    return False, f"Erro ao atualizar: {stdout}"
+
+
+def aplicar_atualizacao_zip():
+    """Baixa e aplica as atualizacoes via ZIP."""
+    try:
+        # Salva lembretes
+        lembretes_path = os.path.join(JARVIS_DIR, "lembretes.json")
+        tem_lembretes = os.path.exists(lembretes_path)
+        if tem_lembretes:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmp:
+                shutil.copy2(lembretes_path, tmp.name)
+                tmp_lembretes = tmp.name
+
+        # Baixa ZIP
+        tmp_zip = os.path.join(tempfile.gettempdir(), "jarvis-update.zip")
+        urllib.request.urlretrieve(REPO_URL, tmp_zip)
+
+        # Extrai
+        tmp_extract = os.path.join(tempfile.gettempdir(), "jarvis-update")
+        with zipfile.ZipFile(tmp_zip, 'r') as z:
+            z.extractall(tmp_extract)
+
+        # Copia arquivos (preserva venv, backups, lembretes)
+        preserve = ["venv", "backups", "__pycache__", "lembretes.json"]
+        src = os.path.join(tmp_extract, "jarvis-assistent-main")
+
+        for item in os.listdir(src):
+            if item in preserve:
+                continue
+            src_path = os.path.join(src, item)
+            dst_path = os.path.join(JARVIS_DIR, item)
+            if os.path.isdir(src_path):
+                if os.path.exists(dst_path):
+                    shutil.rmtree(dst_path)
+                shutil.copytree(src_path, dst_path)
+            else:
+                shutil.copy2(src_path, dst_path)
+
+        # Restaura lembretes
+        if tem_lembretes:
+            shutil.copy2(tmp_lembretes, lembretes_path)
+            os.remove(tmp_lembretes)
+
+        # Limpa
+        shutil.rmtree(tmp_extract, ignore_errors=True)
+        os.remove(tmp_zip)
+
+        # Atualiza dependencias
+        venv_pip = os.path.join(JARVIS_DIR, "venv", "Scripts", "pip.exe")
+        venv_python = os.path.join(JARVIS_DIR, "venv", "Scripts", "python.exe")
+        req_path = os.path.join(JARVIS_DIR, "requirements.txt")
+        if os.path.exists(venv_pip) and os.path.exists(req_path):
+            subprocess.run([venv_pip, "install", "-r", req_path, "--quiet"],
+                         capture_output=True, timeout=120)
+
+        return True, "Atualizado com sucesso! Reinicie o Jarvis."
+    except Exception as e:
+        return False, f"Erro ao atualizar: {e}"
+
+
+def aplicar_atualizacao():
+    """Aplica atualizacao pelo metodo disponivel."""
+    if tem_git() and tem_repo():
+        return aplicar_atualizacao_git()
+    return aplicar_atualizacao_zip()
 
 
 def reiniciar():
