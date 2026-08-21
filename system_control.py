@@ -441,4 +441,53 @@ def list_running() -> str:
             continue
 
     lista = sorted(procs)[:20]
-    return f"Programas em execucao, Senhor ({len(lista)}): {', '.join(lista)}"
+    return (
+        f"+--------------------------------------+\n"
+        f"|      PROGRAMAS ABERTOS, SENHOR       |\n"
+        f"+--------------------------------------+\n"
+        f"|  Total: {len(lista)} programas\n"
+        f"|                                       \n"
+        + "\n".join(f"|  - {p}" for p in lista) +
+        f"\n+--------------------------------------+"
+    )
+
+
+def list_running_fala() -> str:
+    """Retorna resumo falado dos programas abertos."""
+    procs = set()
+    for proc in psutil.process_iter(["name"]):
+        try:
+            name = proc.info["name"]
+            if name and not name.startswith("svchost") and not name.startswith("System"):
+                procs.add(name)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+
+    lista = sorted(procs)[:10]
+    total = len(lista)
+
+    if total == 0:
+        return "Nenhum programa aberto, Senhor."
+
+    principais = []
+    nomes_populares = {
+        "chrome": "Chrome", "firefox": "Firefox", "msedge": "Edge",
+        "discord": "Discord", "spotify": "Spotify", "steam": "Steam",
+        "code": "VS Code", "explorer": "Explorador", "notepad": "Bloco de Notas",
+        "word": "Word", "excel": "Excel", "powerpnt": "PowerPoint",
+        "OBS": "OBS", "vlc": "VLC", "7zip": "7-Zip",
+    }
+
+    for p in lista:
+        nome_base = p.lower().replace(".exe", "")
+        if nome_base in nomes_populares:
+            principais.append(nomes_populares[nome_base])
+        elif len(nome_base) > 2:
+            principais.append(nome_base.capitalize())
+
+    if principais:
+        texto = f"Tenho {total} programas abertos. Os principais sao: {', '.join(principais[:6])}"
+    else:
+        texto = f"Tenho {total} programas abertos"
+
+    return texto + "."
