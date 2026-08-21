@@ -467,7 +467,7 @@ class JarvisApp(ctk.CTk):
         resp = chat(text, self.historico, modelo=self.modelo_ollama)
         self._finish(text, resp)
 
-    def _limpar_artigo(texto):
+    def _limpar_artigo(self, texto):
         """Remove artigos e conectivos comuns do inicio do comando."""
         texto = texto.strip()
         artigos = ["o ", "a ", "os ", "as ", "um ", "uma ", "uns ", "umas ",

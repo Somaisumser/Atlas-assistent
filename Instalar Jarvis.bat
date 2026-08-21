@@ -2,20 +2,17 @@
 chcp 65001 >nul 2>&1
 title Jarvis - Instalador
 color 0B
+cd /d "%~dp0"
 
 echo.
-echo  ╔══════════════════════════════════════════╗
-echo  ║     JARVIS - INSTALADOR AUTOMATICO      ║
-echo  ║     Mordomo Virtual Pessoal             ║
-echo  ╚══════════════════════════════════════════╝
+echo =============================================
+echo      JARVIS - INSTALADOR AUTOMATICO
+echo      Mordomo Virtual Pessoal
+echo =============================================
 echo.
 
-:: ═══════════════════════════════════════════
-:: 1. VERIFICAR PYTHON
-:: ═══════════════════════════════════════════
 echo [1/5] Verificando Python...
 
-:: Tenta python3.11 primeiro, depois python
 set PYTHON_CMD=
 where python3.11 >nul 2>&1
 if %errorlevel%==0 (
@@ -24,7 +21,6 @@ if %errorlevel%==0 (
 )
 where python >nul 2>&1
 if %errorlevel%==0 (
-    :: Verifica se e Python 3.11+
     for /f "tokens=2" %%a in ('python --version 2^>^&1') do set PYVER=%%a
     echo         Versao encontrada: %PYVER%
     set PYTHON_CMD=python
@@ -46,9 +42,6 @@ exit /b 1
 echo         Python encontrado: %PYTHON_CMD%
 echo.
 
-:: ═══════════════════════════════════════════
-:: 2. CRIAR VIRTUAL ENVIRONMENT
-:: ═══════════════════════════════════════════
 echo [2/5] Criando ambiente virtual...
 
 if exist "venv" (
@@ -64,19 +57,14 @@ if exist "venv" (
 )
 echo.
 
-:: ═══════════════════════════════════════════
-:: 3. INSTALAR DEPENDENCIAS
-:: ═══════════════════════════════════════════
 echo [3/5] Instalando dependencias...
 echo         Isso pode demorar alguns minutos...
 echo.
 
 call venv\Scripts\activate.bat
 
-:: Atualiza pip primeiro
 python -m pip install --upgrade pip --quiet
 
-:: Instala todas as dependencias
 pip install -r requirements.txt --quiet
 
 if %errorlevel% neq 0 (
@@ -99,9 +87,6 @@ if %errorlevel% neq 0 (
 echo         Dependencias instaladas!
 echo.
 
-:: ═══════════════════════════════════════════
-:: 4. VERIFICAR OLLAMA
-:: ═══════════════════════════════════════════
 echo [4/5] Verificando Ollama...
 
 where ollama >nul 2>&1
@@ -128,9 +113,6 @@ if %errorlevel%==0 (
     echo.
 )
 
-:: ═══════════════════════════════════════════
-:: 5. CRIAR ATALHO
-:: ═══════════════════════════════════════════
 echo [5/5] Criando Jarvis.bat...
 
 (
@@ -138,24 +120,20 @@ echo [5/5] Criando Jarvis.bat...
     echo chcp 65001 ^>nul 2^>^&1
     echo title Jarvis - Mordomo Virtual
     echo cd /d "%%~dp0"
-    echo call venv\Scripts\activate.bat
-    echo python main.py
+    echo venv\Scripts\python.exe main.py
     echo pause
 ) > Jarvis.bat
 
 echo         Jarvis.bat criado!
 echo.
 
-:: ═══════════════════════════════════════════
-:: CONCLUSAO
-:: ═══════════════════════════════════════════
-echo  ╔══════════════════════════════════════════╗
-echo  ║        INSTALACAO CONCLUIDA!            ║
-echo  ╚══════════════════════════════════════════╝
+echo =============================================
+echo        INSTALACAO CONCLUIDA!
+echo =============================================
 echo.
 echo  Para usar o Jarvis:
 echo    1. Clique duas vezes em "Jarvis.bat"
-echo    2. Ou rode: venv\Scripts\activate ^& python main.py
+echo    2. Ou rode: python main.py
 echo.
 echo  Comandos de voz:
 echo    "Jarvis, abre o discord"

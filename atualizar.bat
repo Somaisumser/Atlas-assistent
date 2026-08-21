@@ -2,6 +2,7 @@
 chcp 65001 >nul 2>&1
 title Jarvis - Atualizador
 color 0B
+cd /d "%~dp0"
 
 echo.
 echo  ==========================================

@@ -261,7 +261,31 @@ def open_program(nome: str, monitor: int = None) -> str:
         return _abrir_e_mover()
 
     # Qualquer outro programa: tenta direto
-    return _abrir_e_mover()
+    resultado = _abrir_e_mover()
+
+    # Se deu certo (nao e erro), retorna
+    if "Nao consegui" not in resultado and "desculpas" not in resultado.lower():
+        return resultado
+
+    # Programa nao encontrado - da sugestoes
+    programas_conhecidos = list(apps_path.keys()) + list(apps_caminho.keys())
+    # Procura por nomes parecidos
+    sugestoes = []
+    for p in programas_conhecidos:
+        if nome in p or p in nome:
+            sugestoes.append(p)
+        elif len(nome) >= 3 and (p.startswith(nome[:3]) or nome.startswith(p[:3])):
+            sugestoes.append(p)
+
+    if sugestoes:
+        lista = ", ".join(sugestoes[:5])
+        return (f"Peço desculpas Senhor, mas nao encontrei '{nome}' no sistema. "
+                f"Talvez o Senhor quis dizer: {lista}? "
+                f"Ou o programa pode nao estar instalado neste computador.")
+    else:
+        return (f"Peço desculpas Senhor, mas nao encontrei '{nome}' no sistema. "
+                f"Verifique se o nome esta correto e se o programa esta instalado. "
+                f"Caso queira, posso pesquisar na internet por Download de {nome}.")
 
 
 def close_program(nome: str) -> str:
