@@ -29,14 +29,35 @@ elseif (Get-Command "python" -ErrorAction SilentlyContinue) {
 }
 
 if (-not $PythonCmd) {
-    Write-Host "  [ERRO] Python nao encontrado!" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "  Baixe Python 3.11 em:" -ForegroundColor White
-    Write-Host "  https://www.python.org/downloads/release/python-3119/" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "  IMPORTANTE: Marque 'Add Python to PATH'!" -ForegroundColor Yellow
-    Read-Host "Pressione Enter para sair"
-    exit 1
+    Write-Host "  Python nao encontrado!" -ForegroundColor Yellow
+    Write-Host "  Baixando Python 3.11.9..." -ForegroundColor Gray
+    
+    $installerPath = "$env:TEMP\python-installer.exe"
+    Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe" -OutFile $installerPath
+    
+    if (-not (Test-Path $installerPath)) {
+        Write-Host "  [ERRO] Falha ao baixar Python." -ForegroundColor Red
+        Read-Host "Pressione Enter para sair"
+        exit 1
+    }
+    
+    Write-Host "  Instalando Python 3.11.9..." -ForegroundColor Gray
+    Write-Host "  (Isso pode demorar alguns minutos)" -ForegroundColor Gray
+    Start-Process $installerPath -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1" -Wait
+    Start-Sleep -Seconds 5
+    Remove-Item $installerPath -ErrorAction SilentlyContinue
+    
+    # Recarrega PATH
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    
+    if (Get-Command "python" -ErrorAction SilentlyContinue) {
+        $PythonCmd = "python"
+        Write-Host "  Python 3.11.9 instalado com sucesso!" -ForegroundColor Green
+    } else {
+        Write-Host "  [ERRO] Falha ao instalar Python. Reinicie o PC e tente novamente." -ForegroundColor Red
+        Read-Host "Pressione Enter para sair"
+        exit 1
+    }
 }
 
 $pyVersion = & $PythonCmd --version 2>&1

@@ -27,16 +27,43 @@ if %errorlevel%==0 (
     goto :python_ok
 )
 
+echo         Python nao encontrado!
+echo         Baixando Python 3.11.9...
 echo.
-echo  [ERRO] Python nao encontrado!
+
+:: Baixa o instalador do Python
+powershell -Command "Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe' -OutFile '%TEMP%\python-installer.exe'"
+
+if not exist "%TEMP%\python-installer.exe" (
+    echo  [ERRO] Falha ao baixar Python.
+    echo  Baixe manualmente em: https://www.python.org/downloads/release/python-3119/
+    echo  IMPORTANTE: Marque "Add Python to PATH"!
+    pause
+    exit /b 1
+)
+
+echo         Instalando Python 3.11.9...
+echo         (Isso pode demorar alguns minutos)
 echo.
-echo  Baixe Python 3.11 em:
-echo  https://www.python.org/downloads/release/python-3119/
-echo.
-echo  IMPORTANTE: Marque "Add Python to PATH" durante a instalacao!
-echo.
-pause
-exit /b 1
+
+:: Instala silenciosamente com PATH
+"%TEMP%\python-installer.exe" /quiet InstallAllUsers=1 PrependPath=1
+timeout /t 5 /nobreak >nul
+
+:: Limpa o instalador
+del "%TEMP%\python-installer.exe" >nul 2>&1
+
+:: Verifica se instalou
+where python >nul 2>&1
+if %errorlevel% neq 0 (
+    echo  [ERRO] Falha ao instalar Python.
+    echo  Reinicie o computador e tente novamente.
+    pause
+    exit /b 1
+)
+
+set PYTHON_CMD=python
+echo         Python 3.11.9 instalado com sucesso!
 
 :python_ok
 echo         Python encontrado: %PYTHON_CMD%
