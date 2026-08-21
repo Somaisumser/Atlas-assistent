@@ -82,7 +82,7 @@ class JarvisApp(ctk.CTk):
         self.escuta_dinamica = None
         self._provider = "ollama"
         self._gemini_key = ""
-        self._gemini_model = "gemini-2.0-flash"
+        self._gemini_model = "gemini-3.6-flash"
         self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
         self._load_config()
         self._build_ui()

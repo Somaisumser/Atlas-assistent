@@ -24,7 +24,7 @@ VELOCIDADE = 1.0
 escuta_dinamica = None
 _provider = "ollama"
 _gemini_key = ""
-_gemini_model = "gemini-2.0-flash"
+_gemini_model = "gemini-3.6-flash"
 _config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 
