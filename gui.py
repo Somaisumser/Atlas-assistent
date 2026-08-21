@@ -15,7 +15,7 @@ def _strip_ansi(texto):
 
 from brain import chat
 from voice import listen, speak, stop_speak, VOZES, EscutaDinamica
-from system_control import open_program, close_program, monitor_pc, list_running
+from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running
 from file_manager import list_dir, read_file, create_file, delete_file
 from web_search import search
 from code_runner import run_code
@@ -520,7 +520,7 @@ class JarvisApp(ctk.CTk):
         if m:
             return close_program(self._limpar_artigo(m.group(1)))
         if "monitor" in text or "status" in text or "desempenho" in text:
-            return "Permita-me verificar o PC, Senhor.\n" + monitor_pc()
+            return "Permita-me verificar o PC, Senhor.\n" + monitor_pc() + "\n\n" + monitor_pc_fala()
         if "programas" in text and ("aberto" in text or "rodando" in text):
             return "Aqui esta a lista, Senhor.\n" + list_running()
         m = re.match(r"(?:lembre|lembrete|avise|aviso)\s+(.+?)\s+(?:em|daqui|daqui a)\s+(\d+)\s*(?:minuto|min|hora|h)", text)

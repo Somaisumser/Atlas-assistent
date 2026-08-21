@@ -369,7 +369,7 @@ def monitor_pc() -> str:
     disco = psutil.disk_usage("C:\\" if SYSTEM == "Windows" else "/")
 
     temp = _pegar_temperatura()
-    temp_str = temp if temp else "Nao disponivel (instale OpenHardwareMonitor)"
+    temp_str = temp if temp else "Nao disponivel"
 
     bateria = "Nao disponivel"
     try:
@@ -400,6 +400,33 @@ def monitor_pc() -> str:
         f"|  BATERIA: {bateria}\n"
         f"+--------------------------------------+"
     )
+
+
+def monitor_pc_fala() -> str:
+    """Retorna resumo falado do PC."""
+    cpu = psutil.cpu_percent(interval=1)
+    ram = psutil.virtual_memory()
+    disco = psutil.disk_usage("C:\\" if SYSTEM == "Windows" else "/")
+    temp = _pegar_temperatura()
+
+    partes = [
+        f"CPU em {cpu:.0f} por cento",
+        f"RAM em {ram.percent:.0f} por cento, {ram.used // (1024**3)} de {ram.total // (1024**3)} gigabytes",
+        f"Disco em {disco.percent:.0f} por cento",
+    ]
+
+    if temp:
+        partes.append(f"Temperatura {temp}")
+
+    try:
+        bat = psutil.sensors_battery()
+        if bat:
+            status = "carregando" if bat.power_plugged else "na bateria"
+            partes.append(f"Bateria {bat.percent} por cento, {status}")
+    except Exception:
+        pass
+
+    return ", ".join(partes) + "."
 
 
 def list_running() -> str:

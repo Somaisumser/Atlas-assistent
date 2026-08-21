@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from brain import chat
 from voice import listen, speak, VOZES, EscutaDinamica, stop_speak
-from system_control import open_program, close_program, monitor_pc, list_running
+from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running
 from file_manager import list_dir, read_file, create_file, delete_file
 from web_search import search
 from code_runner import run_code
@@ -98,7 +98,7 @@ def processar(texto):
 
     # Monitorar PC
     if "monitor" in text_low or "status" in text_low or "desempenho" in text_low:
-        return "Permita-me verificar o PC, Senhor.\n" + monitor_pc()
+        return "Permita-me verificar o PC, Senhor.\n" + monitor_pc() + "\n\n" + monitor_pc_fala()
 
     # Programas abertos
     if "programas" in text_low and ("aberto" in text_low or "rodando" in text_low):
