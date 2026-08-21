@@ -749,7 +749,7 @@ class JarvisApp(ctk.CTk):
             return "Permita-me verificar, Senhor.\n" + list_dir(m.group(1).strip())
 
         # Criar arquivo
-        m = re.match(r"(?:cria|crie|criar|criar\s+um|novo\s+arquivo)\s+(?:um\s+)?arquivo\s+(.+?)\s+(?:com|que tenha|contendo|chamado|named)\s+(.+)", text)
+        m = re.match(r"(?:cria|crie|criar|criar\s+um|novo\s+arquivo)\s+(?:um\s+)?arquivo\s+(?:chamado\s+)?(.+?)\s+(?:com|que tenha|contendo|chamado|named|que tenha o conteudo|que tenha o texto|com o conteudo|com o texto)\s+(.+)", text)
         if m:
             return "Criando o arquivo, Senhor.\n" + create_file(m.group(1).strip(), m.group(2).strip())
 

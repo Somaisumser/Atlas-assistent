@@ -27,6 +27,18 @@ def list_dir(caminho: str = ".") -> str:
 def create_file(caminho: str, conteudo: str = "") -> str:
     """Cria um arquivo com conteudo."""
     try:
+        # Suporte a "area de trabalho" e "desktop"
+        caminho = caminho.lower().replace("area de trabalho", "").replace("desktop", "").strip()
+        if not caminho or caminho.startswith("na ") or caminho.startswith("no "):
+            caminho = caminho.lstrip("na ").lstrip("no ").strip()
+            if not caminho:
+                caminho = "mensagem.txt"
+            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+            caminho = os.path.join(desktop, caminho)
+        elif not os.path.isabs(caminho):
+            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+            caminho = os.path.join(desktop, caminho)
+        
         Path(caminho).parent.mkdir(parents=True, exist_ok=True)
         Path(caminho).write_text(conteudo, encoding="utf-8")
         return f"Arquivo criado com sucesso, Senhor: {caminho}"
