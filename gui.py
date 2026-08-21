@@ -723,7 +723,7 @@ class JarvisApp(ctk.CTk):
             return close_program(self._limpar_artigo(m.group(1)))
 
         # Monitorar PC - varias formas
-        if re.search(r"(?:monitorar|monitora|status|desempenho|como\s+(?:esta|estao|esta\s+o)|qual\s+(?:o|a|as|os)\s+(?:status|desempenho|situacao|estado)|verificar\s+(?:o\s+)?pc|computador|maquina)", text):
+        if re.search(r"(?:monitorar|monitora|verificar\s+(?:o\s+)?pc|computador|maquina|como\s+(?:esta|estao)\s+(?:o\s+)?(?:pc|computador|desempenho|sistema)|qual\s+(?:o|a|as|os)\s+(?:status|desempenho|situacao|estado)\s+(?:do\s+)?(?:pc|computador)|status\s+(?:do\s+)?pc|desempenho\s+(?:do\s+)?pc)", text):
             return "Permita-me verificar o PC, Senhor.\n" + monitor_pc() + "\n\n" + monitor_pc_fala()
 
         # Programas abertos - varias formas
