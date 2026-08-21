@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul 2>&1
 title Jarvis - Instalador
 color 0B
 cd /d "%~dp0"
