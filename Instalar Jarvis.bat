@@ -84,6 +84,20 @@ if %errorlevel% neq 0 (
     pip install screeninfo --quiet
 )
 
+:: Verifica se o PyAudio foi instalado
+python -c "import pyaudio" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo.
+    echo  [INFO] PyAudio nao encontrado. Tentando instalar...
+    echo.
+    pip install pipwin --quiet
+    pipwin install pyaudio
+    if %errorlevel% neq 0 (
+        echo  [AVISO] PyAudio pode ter falhado. O Jarvis funciona sem voz.
+        echo  Para instalar manualmente: pip install PyAudio
+    )
+)
+
 echo         Dependencias instaladas!
 echo.
 

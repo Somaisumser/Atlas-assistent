@@ -71,6 +71,14 @@ Write-Host "  Isso pode demorar alguns minutos..." -ForegroundColor Gray
 python -m pip install --upgrade pip --quiet 2>$null
 pip install -r requirements.txt --quiet 2>$null
 
+# Verifica se PyAudio foi instalado
+python -c "import pyaudio" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  PyAudio nao encontrado. Tentando instalar..." -ForegroundColor Yellow
+    pip install pipwin --quiet 2>$null
+    pipwin install pyaudio 2>$null
+}
+
 Write-Host "  Dependencias instaladas!" -ForegroundColor Green
 Write-Host ""
 

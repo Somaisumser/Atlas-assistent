@@ -8,3 +8,4 @@ customtkinter>=5.2.0
 ddgs>=9.0.0
 pywin32>=306
 screeninfo>=0.8
+PyAudio>=0.2.13
