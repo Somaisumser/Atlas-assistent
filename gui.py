@@ -169,18 +169,26 @@ class JarvisApp(ctk.CTk):
         self._speed_slider.configure(command=lambda v: self._speed_label.configure(text=f"Velocidade: {v:.1f}x"))
         ctk.CTkButton(box_vel, text="Testar voz", fg_color="#2a2a4a", hover_color="#3a3a5a", text_color=TEXT, font=ctk.CTkFont(size=12), command=lambda: threading.Thread(target=speak, args=("Teste de voz.", self._voice_var.get(), self._speed_slider.get()), daemon=True).start()).pack(pady=(10, 12), padx=(20, 0), anchor="w")
 
-        aba_config = tab.add("Config")
+        aba_config = tab.add("Cerebro")
         scroll_config = ctk.CTkScrollableFrame(aba_config, fg_color="transparent")
         scroll_config.pack(fill="both", expand=True)
 
-        box_modelo = ctk.CTkFrame(scroll_config, fg_color="#1a1a3a", corner_radius=8)
-        box_modelo.pack(fill="x", pady=(0, 8))
-        ctk.CTkLabel(box_modelo, text="Modelo Ollama", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        box_provider = ctk.CTkFrame(scroll_config, fg_color="#1a1a3a", corner_radius=8)
+        box_provider.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_provider, text="Cerebro do Jarvis", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        self._provider_var = ctk.StringVar(value=self._provider)
+        for prov, label in [("ollama", "Ollama (Local, Gratis)"), ("gemini", "Google Gemini (Nuvem, Gratis)")]:
+            ctk.CTkRadioButton(box_provider, text=label, variable=self._provider_var, value=prov, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13), command=self._on_provider_change).pack(anchor="w", pady=3, padx=(20, 0))
+        ctk.CTkFrame(box_provider, fg_color="transparent", height=8).pack()
+
+        self._box_ollama = ctk.CTkFrame(scroll_config, fg_color="#1a1a3a", corner_radius=8)
+        self._box_ollama.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(self._box_ollama, text="Modelo Ollama", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
 
         self._model_var = ctk.StringVar(value="llama3.2")
         self._modelos_info = {}
 
-        model_frame = ctk.CTkFrame(box_modelo, fg_color="transparent")
+        model_frame = ctk.CTkFrame(self._box_ollama, fg_color="transparent")
         model_frame.pack(fill="x", padx=(20, 12), pady=(0, 8))
 
         self._model_combo = ctk.CTkOptionMenu(
@@ -198,45 +206,38 @@ class JarvisApp(ctk.CTk):
         ).pack(side="left", padx=(8, 0))
 
         self._model_info_label = ctk.CTkLabel(
-            box_modelo, text="", text_color=MUTED, font=ctk.CTkFont(size=11), justify="left"
+            self._box_ollama, text="", text_color=MUTED, font=ctk.CTkFont(size=11), justify="left"
         )
         self._model_info_label.pack(anchor="w", padx=(20, 12), pady=(0, 10))
 
         self._model_combo.configure(command=lambda v: self._atualizar_info_modelo(v))
 
-        box_host = ctk.CTkFrame(scroll_config, fg_color="#1a1a3a", corner_radius=8)
-        box_host.pack(fill="x", pady=(0, 8))
-        ctk.CTkLabel(box_host, text="Host Ollama", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
-        self._host_entry = ctk.CTkEntry(box_host, fg_color=PANEL, border_color="#1a1a3a", text_color=TEXT, placeholder_text="http://localhost:11434", height=36, font=ctk.CTkFont(size=12))
-        self._host_entry.pack(fill="x", padx=(20, 12), pady=(0, 12))
+        box_host = ctk.CTkFrame(self._box_ollama, fg_color="transparent")
+        box_host.pack(fill="x", padx=(0, 0), pady=(0, 8))
+        ctk.CTkLabel(box_host, text="Host Ollama", font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=(0, 4))
+        self._host_entry = ctk.CTkEntry(box_host, fg_color=PANEL, border_color="#1a1a3a", text_color=TEXT, placeholder_text="http://localhost:11434", height=32, font=ctk.CTkFont(size=12))
+        self._host_entry.pack(fill="x", padx=(20, 12), pady=(0, 0))
+
+        self._box_gemini = ctk.CTkFrame(scroll_config, fg_color="#1a1a3a", corner_radius=8)
+        self._box_gemini.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(self._box_gemini, text="Google Gemini", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+
+        box_key = ctk.CTkFrame(self._box_gemini, fg_color="transparent")
+        box_key.pack(fill="x")
+        ctk.CTkLabel(box_key, text="API Key", font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=(0, 4))
+        self._gemini_key_entry = ctk.CTkEntry(box_key, fg_color=PANEL, border_color="#1a1a3a", text_color=TEXT, placeholder_text="AIza...", height=32, font=ctk.CTkFont(size=12), show="*")
+        self._gemini_key_entry.pack(fill="x", padx=(20, 12), pady=(0, 2))
+        self._gemini_key_entry.insert(0, self._gemini_key)
+        ctk.CTkLabel(box_key, text="Gratis: 15 req/min - aistudio.google.com/apikey", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(0, 8))
+
+        box_gmodel = ctk.CTkFrame(self._box_gemini, fg_color="transparent")
+        box_gmodel.pack(fill="x")
+        ctk.CTkLabel(box_gmodel, text="Modelo", font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=(0, 4))
+        self._gemini_model_var = ctk.StringVar(value=self._gemini_model)
+        ctk.CTkOptionMenu(box_gmodel, values=GEMINI_MODELS, variable=self._gemini_model_var, fg_color=PANEL, button_color="#1a1a3a", button_hover_color=ACCENT, text_color=TEXT, width=350, font=ctk.CTkFont(size=12)).pack(padx=(20, 12), pady=(0, 12))
 
         self.after(100, self._atualizar_modelos)
-
-        aba_api = tab.add("API")
-        scroll_api = ctk.CTkScrollableFrame(aba_api, fg_color="transparent")
-        scroll_api.pack(fill="both", expand=True)
-
-        box_provider = ctk.CTkFrame(scroll_api, fg_color="#1a1a3a", corner_radius=8)
-        box_provider.pack(fill="x", pady=(0, 8))
-        ctk.CTkLabel(box_provider, text="Provider de IA", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
-        self._provider_var = ctk.StringVar(value=self._provider)
-        for prov, label in [("ollama", "Ollama (Local, Gratis)"), ("gemini", "Google Gemini (Nuvem, Gratis)")]:
-            ctk.CTkRadioButton(box_provider, text=label, variable=self._provider_var, value=prov, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13)).pack(anchor="w", pady=3, padx=(20, 0))
-        ctk.CTkFrame(box_provider, fg_color="transparent", height=8).pack()
-
-        box_gemini = ctk.CTkFrame(scroll_api, fg_color="#1a1a3a", corner_radius=8)
-        box_gemini.pack(fill="x", pady=(0, 8))
-        ctk.CTkLabel(box_gemini, text="Google Gemini API Key", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
-        self._gemini_key_entry = ctk.CTkEntry(box_gemini, fg_color=PANEL, border_color="#1a1a3a", text_color=TEXT, placeholder_text="AIza...", height=36, font=ctk.CTkFont(size=12), show="*")
-        self._gemini_key_entry.pack(fill="x", padx=(20, 12), pady=(0, 6))
-        self._gemini_key_entry.insert(0, self._gemini_key)
-        ctk.CTkLabel(box_gemini, text="Gratuito: 15 req/min - aistudio.google.com", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(0, 8))
-
-        box_gemini_model = ctk.CTkFrame(scroll_api, fg_color="#1a1a3a", corner_radius=8)
-        box_gemini_model.pack(fill="x", pady=(0, 8))
-        ctk.CTkLabel(box_gemini_model, text="Modelo Gemini", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
-        self._gemini_model_var = ctk.StringVar(value=self._gemini_model)
-        ctk.CTkOptionMenu(box_gemini_model, values=GEMINI_MODELS, variable=self._gemini_model_var, fg_color=PANEL, button_color="#1a1a3a", button_hover_color=ACCENT, text_color=TEXT, width=350, font=ctk.CTkFont(size=12)).pack(padx=(20, 12), pady=(0, 12))
+        self.after(200, self._on_provider_change)
 
         aba_sobre = tab.add("Sobre")
         scroll_sobre = ctk.CTkScrollableFrame(aba_sobre, fg_color="transparent")
@@ -260,7 +261,7 @@ class JarvisApp(ctk.CTk):
             "Escuta dinamica continua",
             "Modo desenvolvedor",
             "Atualizacoes automaticas",
-            "Groq e Gemini gratuitos",
+            "Ollama local + Gemini gratuito",
         ]
         for func in funcionalidades:
             ctk.CTkLabel(box_func, text=f"\u2713  {func}", font=ctk.CTkFont(size=13), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=2)
@@ -852,6 +853,16 @@ class JarvisApp(ctk.CTk):
         if self._provider == "gemini":
             return self._gemini_model
         return self.modelo_ollama
+
+    def _on_provider_change(self):
+        """Mostra/esconde configs baseado no provider selecionado."""
+        prov = self._provider_var.get()
+        if prov == "ollama":
+            self._box_ollama.pack(fill="x", pady=(0, 8), after=self._box_ollama.master.winfo_children()[0] if self._box_ollama.master.winfo_children() else None)
+            self._box_gemini.pack_forget()
+        else:
+            self._box_gemini.pack(fill="x", pady=(0, 8), after=self._box_ollama.master.winfo_children()[0] if self._box_ollama.master.winfo_children() else None)
+            self._box_ollama.pack_forget()
 
     def _load_config(self):
         """Carrega configuracoes salvas."""
