@@ -36,25 +36,28 @@ def _mover_para_monitor(titulo_janela, num_monitor):
         return False
 
     alvo = monitores[num_monitor - 1]
+    encontrado = [False]
 
     def callback(hwnd, _):
         if win32gui.IsWindowVisible(hwnd) and titulo_janela.lower() in win32gui.GetWindowText(hwnd).lower():
             try:
                 win32gui.SetWindowPos(hwnd, None, alvo["x"] + 50, alvo["y"] + 50, 0, 0,
                                        win32con.SWP_NOSIZE | win32con.SWP_NOZORDER)
+                encontrado[0] = True
                 return False
             except Exception:
                 pass
         return True
 
-    # Tenta encontrar a janela varias vezes (a janela pode demorar pra abrir)
     for _ in range(10):
         try:
             win32gui.EnumWindows(callback, None)
         except Exception:
             pass
+        if encontrado[0]:
+            break
         time.sleep(0.3)
-    return True
+    return encontrado[0]
 
 
 def _obter_janela_recente(nome):
@@ -321,8 +324,24 @@ def _barra(porcentagem, tamanho=15):
     return f"{cor}[{'#' * cheio}{'-' * vazia}]{reset} {porcentagem:.0f}%"
 
 
+_temp_cache = {"valor": None, "tempo": 0}
+
+
 def _pegar_temperatura():
-    """Tenta obter a temperatura do CPU."""
+    """Tenta obter a temperatura do CPU com cache de 30s."""
+    import time
+    agora = time.time()
+    if _temp_cache["valor"] is not None and (agora - _temp_cache["tempo"]) < 30:
+        return _temp_cache["valor"]
+
+    resultado = _pegar_temperatura_raw()
+    _temp_cache["valor"] = resultado
+    _temp_cache["tempo"] = agora
+    return resultado
+
+
+def _pegar_temperatura_raw():
+    """Busca temperatura sem cache."""
     if SYSTEM != "Windows":
         try:
             temps = psutil.sensors_temperatures()
@@ -335,11 +354,8 @@ def _pegar_temperatura():
         return None
 
     metodos = [
-        # WMI via CIM
         'Get-CimInstance MSAcpi_ThermalZoneTemperature -Namespace "root/wmi" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty CurrentTemperature',
-        # WMI classico
         'Get-WmiObject MSAcpi_ThermalZoneTemperature -Namespace "root/wmi" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty CurrentTemperature',
-        # OpenHardwareMonitor (se instalado)
         'Get-CimInstance -Namespace "root/OpenHardwareMonitor" -ClassName Sensor -ErrorAction SilentlyContinue | Where-Object {$_.SensorType -eq "Temperature"} | Select-Object -First 1 -ExpandProperty Value',
     ]
     for cmd in metodos:
@@ -350,7 +366,6 @@ def _pegar_temperatura():
             )
             if resultado.returncode == 0 and resultado.stdout.strip():
                 temp_raw = float(resultado.stdout.strip())
-                # WMI retorna em decimos de Kelvin
                 if temp_raw > 200:
                     temp_c = (temp_raw / 10) - 273.15
                 else:
@@ -362,75 +377,86 @@ def _pegar_temperatura():
     return None
 
 
-def monitor_pc() -> str:
-    """Retorna informacoes do PC formatadas."""
-    cpu = psutil.cpu_percent(interval=1)
+def _coletar_dados_pc():
+    """Coleta todos os dados do PC uma unica vez."""
+    cpu = psutil.cpu_percent(interval=None)
     ram = psutil.virtual_memory()
     disco = psutil.disk_usage("C:\\" if SYSTEM == "Windows" else "/")
-
     temp = _pegar_temperatura()
-    temp_str = temp if temp else "Nao disponivel"
-
-    bateria = "Nao disponivel"
+    bateria = None
     try:
         bat = psutil.sensors_battery()
         if bat:
-            bateria = f"{bat.percent}% ({'Carregando' if bat.power_plugged else 'Bateria'})"
+            bateria = {"percent": bat.percent, "carregando": bat.power_plugged}
     except Exception:
         pass
-
     nucleos = psutil.cpu_count(logical=True)
     freq = psutil.cpu_freq()
-    freq_str = f"{freq.current:.0f} MHz" if freq else "N/A"
+    return {
+        "cpu": cpu, "ram": ram, "disco": disco, "temp": temp,
+        "bateria": bateria, "nucleos": nucleos, "freq": freq,
+    }
+
+
+def monitor_pc() -> str:
+    """Retorna informacoes do PC formatadas."""
+    d = _coletar_dados_pc()
+
+    temp_str = d["temp"] if d["temp"] else "Nao disponivel"
+    bateria_str = "Nao disponivel"
+    if d["bateria"]:
+        bateria_str = f"{d['bateria']['percent']}% ({'Carregando' if d['bateria']['carregando'] else 'Bateria'})"
+    freq_str = f"{d['freq'].current:.0f} MHz" if d["freq"] else "N/A"
 
     return (
         f"+--------------------------------------+\n"
         f"|      RELATORIO DO PC, SENHOR         |\n"
         f"+--------------------------------------+\n"
-        f"|  CPU:   {_barra(cpu)}\n"
-        f"|         Nucleos: {nucleos} | Freq: {freq_str}\n"
+        f"|  CPU:   {_barra(d['cpu'])}\n"
+        f"|         Nucleos: {d['nucleos']} | Freq: {freq_str}\n"
         f"|                                       \n"
-        f"|  RAM:   {_barra(ram.percent)}\n"
-        f"|         {ram.used // (1024**3)}GB / {ram.total // (1024**3)}GB\n"
+        f"|  RAM:   {_barra(d['ram'].percent)}\n"
+        f"|         {d['ram'].used // (1024**3)}GB / {d['ram'].total // (1024**3)}GB\n"
         f"|                                       \n"
-        f"|  DISCO: {_barra(disco.percent)}\n"
-        f"|         {disco.used // (1024**3)}GB / {disco.total // (1024**3)}GB\n"
+        f"|  DISCO: {_barra(d['disco'].percent)}\n"
+        f"|         {d['disco'].used // (1024**3)}GB / {d['disco'].total // (1024**3)}GB\n"
         f"|                                       \n"
         f"|  TEMP:  {temp_str}\n"
-        f"|  BATERIA: {bateria}\n"
+        f"|  BATERIA: {bateria_str}\n"
         f"+--------------------------------------+"
     )
 
 
 def monitor_pc_fala() -> str:
     """Retorna resumo falado do PC."""
-    cpu = psutil.cpu_percent(interval=1)
-    ram = psutil.virtual_memory()
-    disco = psutil.disk_usage("C:\\" if SYSTEM == "Windows" else "/")
-    temp = _pegar_temperatura()
+    d = _coletar_dados_pc()
 
     partes = [
-        f"CPU em {cpu:.0f} por cento",
-        f"RAM em {ram.percent:.0f} por cento, {ram.used // (1024**3)} de {ram.total // (1024**3)} gigabytes",
-        f"Disco em {disco.percent:.0f} por cento",
+        f"CPU em {d['cpu']:.0f} por cento",
+        f"RAM em {d['ram'].percent:.0f} por cento, {d['ram'].used // (1024**3)} de {d['ram'].total // (1024**3)} gigabytes",
+        f"Disco em {d['disco'].percent:.0f} por cento",
     ]
 
-    if temp:
-        partes.append(f"Temperatura {temp}")
+    if d["temp"]:
+        partes.append(f"Temperatura {d['temp']}")
 
-    try:
-        bat = psutil.sensors_battery()
-        if bat:
-            status = "carregando" if bat.power_plugged else "na bateria"
-            partes.append(f"Bateria {bat.percent} por cento, {status}")
-    except Exception:
-        pass
+    if d["bateria"]:
+        status = "carregando" if d["bateria"]["carregando"] else "na bateria"
+        partes.append(f"Bateria {d['bateria']['percent']} por cento, {status}")
 
     return ", ".join(partes) + "."
 
 
-def list_running() -> str:
-    """Lista programas em execucao."""
+_procs_cache = {"lista": None, "tempo": 0}
+
+
+def _listar_processos():
+    """Lista processos com cache de 2s."""
+    import time
+    agora = time.time()
+    if _procs_cache["lista"] is not None and (agora - _procs_cache["tempo"]) < 2:
+        return _procs_cache["lista"]
+
     procs = set()
     for proc in psutil.process_iter(["name"]):
         try:
@@ -440,7 +466,15 @@ def list_running() -> str:
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
-    lista = sorted(procs)[:20]
+    lista = sorted(procs)
+    _procs_cache["lista"] = lista
+    _procs_cache["tempo"] = agora
+    return lista
+
+
+def list_running() -> str:
+    """Lista programas em execucao."""
+    lista = _listar_processos()[:20]
     return (
         f"+--------------------------------------+\n"
         f"|      PROGRAMAS ABERTOS, SENHOR       |\n"
@@ -454,16 +488,7 @@ def list_running() -> str:
 
 def list_running_fala() -> str:
     """Retorna resumo falado dos programas abertos."""
-    procs = set()
-    for proc in psutil.process_iter(["name"]):
-        try:
-            name = proc.info["name"]
-            if name and not name.startswith("svchost") and not name.startswith("System"):
-                procs.add(name)
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
-
-    lista = sorted(procs)[:10]
+    lista = _listar_processos()[:10]
     total = len(lista)
 
     if total == 0:

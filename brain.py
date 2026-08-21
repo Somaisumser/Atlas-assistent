@@ -4,6 +4,8 @@ import json
 HOST = "http://localhost:11434"
 MODEL = "llama3.2"
 
+_session = requests.Session()
+
 SYSTEM_PROMPT = """Voce e o Jarvis, um mordomo virtual pessoal extremamente educado, formal e prestativo. Fale SEMPRE como um mordomo britanico refinado, usando linguagem formal e cortes.
 
 REGRAS DE FALA:
@@ -49,9 +51,14 @@ def chat(mensagem: str, historico: list = None, modelo: str = None) -> str:
     messages.append({"role": "user", "content": mensagem})
 
     try:
-        resp = requests.post(
+        resp = _session.post(
             f"{HOST}/api/chat",
-            json={"model": modelo_usar, "messages": messages, "stream": False},
+            json={
+                "model": modelo_usar,
+                "messages": messages,
+                "stream": False,
+                "keep_alive": "30m",
+            },
             timeout=120,
         )
         resp.raise_for_status()
@@ -62,10 +69,43 @@ def chat(mensagem: str, historico: list = None, modelo: str = None) -> str:
         return f"Erro ao falar com o Jarvis: {e}"
 
 
+def chat_stream(mensagem: str, historico: list = None, modelo: str = None):
+    """Envia mensagem pro Ollama e yield chunks (streaming)."""
+    modelo_usar = modelo or MODEL
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    if historico:
+        messages.extend(historico[-10:])
+    messages.append({"role": "user", "content": mensagem})
+
+    try:
+        resp = _session.post(
+            f"{HOST}/api/chat",
+            json={
+                "model": modelo_usar,
+                "messages": messages,
+                "stream": True,
+                "keep_alive": "30m",
+            },
+            timeout=120,
+            stream=True,
+        )
+        resp.raise_for_status()
+        for line in resp.iter_lines():
+            if line:
+                data = json.loads(line)
+                chunk = data.get("message", {}).get("content", "")
+                if chunk:
+                    yield chunk
+    except requests.ConnectionError:
+        yield "Erro: Ollama nao esta rodando. Abra o terminal e digite: ollama serve"
+    except Exception as e:
+        yield f"Erro ao falar com o Jarvis: {e}"
+
+
 def listar_modelos() -> list:
     """Lista modelos disponiveis no Ollama."""
     try:
-        resp = requests.get(f"{HOST}/api/tags", timeout=3)
+        resp = _session.get(f"{HOST}/api/tags", timeout=3)
         resp.raise_for_status()
         return [m["name"] for m in resp.json().get("models", [])]
     except Exception:

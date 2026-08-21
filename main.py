@@ -6,11 +6,10 @@ import sys
 import os
 import threading
 
-# Garante que os imports funcionem
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from gui import JarvisApp
-from updater import tem_git, tem_repo, verificar_atualizacoes, aplicar_atualizacao, reiniciar
+from updater import verificar_atualizacoes, aplicar_atualizacao, reiniciar
 
 
 def _verificar_updates_gui(app):
@@ -75,12 +74,11 @@ def _verificar_updates_gui(app):
                                  command=popup.destroy)
         btn_skip.pack(side="left", padx=5)
 
-    app.after(3000, _mostrar_popup)
+    app.after(15000, _mostrar_popup)
 
 
 def main():
     print("[Jarvis] Iniciando...")
-    print("[Jarvis] Verificando atualizacoes...")
     app = JarvisApp()
     threading.Thread(target=_verificar_updates_gui, args=(app,), daemon=True).start()
     app.mainloop()

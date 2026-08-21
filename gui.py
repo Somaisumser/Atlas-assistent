@@ -1,12 +1,9 @@
-import functools
 import customtkinter as ctk
 import threading
 import re
 import os
 import requests
 import json
-from datetime import datetime
-import unicodedata
 
 
 def _strip_ansi(texto):
@@ -534,15 +531,17 @@ class JarvisApp(ctk.CTk):
             ctk.CTkLabel(aba_bak, text="Nenhum backup disponivel.\nBackups sao criados automaticamente\nao salvar modificacoes.", text_color=MUTED, font=ctk.CTkFont(size=12), justify="center").pack(pady=30)
 
     def log(self, sender, text):
-        self.chat.configure(state="normal")
-        prefix = "Voce" if sender == "user" else "Jarvis"
-        text_limpo = _strip_ansi(text)
-        self.chat.insert("end", f"{prefix}: {text_limpo}\n\n")
-        self.chat.configure(state="disabled")
-        self.chat.see("end")
+        def _inserir():
+            self.chat.configure(state="normal")
+            prefix = "Voce" if sender == "user" else "Jarvis"
+            text_limpo = _strip_ansi(text)
+            self.chat.insert("end", f"{prefix}: {text_limpo}\n\n")
+            self.chat.configure(state="disabled")
+            self.chat.see("end")
+        self.after(0, _inserir)
 
     def _set_status(self, text, color=None):
-        self.status.configure(text=text, text_color=color or MUTED)
+        self.after(0, lambda: self.status.configure(text=text, text_color=color or MUTED))
 
     def _send(self):
         text = self.entry.get().strip()

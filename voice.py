@@ -11,6 +11,7 @@ import time
 _engine = None
 _lock = threading.Lock()
 _recognizer = sr.Recognizer()
+_mic_calibrada = False
 _mixer_ready = False
 VELOCIDADE = 1.0
 _ouvindo = False
@@ -40,11 +41,24 @@ def _get_engine():
     return _engine
 
 
-def listen(timeout=5, phrase_limit=10) -> str | None:
-    """Escuta o microfone usando speech_recognition nativo."""
+def _calibrar_mic():
+    """Calibra o microfone uma vez so."""
+    global _mic_calibrada
+    if _mic_calibrada:
+        return
     try:
         with sr.Microphone(sample_rate=16000) as source:
             _recognizer.adjust_for_ambient_noise(source, duration=0.5)
+        _mic_calibrada = True
+    except Exception:
+        pass
+
+
+def listen(timeout=5, phrase_limit=10) -> str | None:
+    """Escuta o microfone usando speech_recognition nativo."""
+    _calibrar_mic()
+    try:
+        with sr.Microphone(sample_rate=16000) as source:
             audio = _recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_limit)
             return _recognizer.recognize_google(audio, language="pt-BR")
     except (sr.UnknownValueError, sr.RequestError, sr.WaitTimeoutError):
@@ -79,11 +93,11 @@ class EscutaDinamica:
 
     def _loop(self):
         global _ouvindo
-        print(f"[Escuta Dinâmica] Pronta. Diga '{self.palavra_ativacao}'...")
+        print(f"[Escuta Dinamica] Pronta. Diga '{self.palavra_ativacao}'...")
 
         with sr.Microphone(sample_rate=16000) as source:
             self._reconhecedor.adjust_for_ambient_noise(source, duration=1)
-            print(f"[Escuta Dinâmica] Noise calibrado. Aguardando...")
+            print(f"[Escuta Dinamica] Noise calibrado. Aguardando...")
 
             while self.ativo:
                 try:
@@ -91,7 +105,7 @@ class EscutaDinamica:
 
                     try:
                         texto = self._reconhecedor.recognize_google(audio, language="pt-BR").lower()
-                        print(f"[Escuta Dinâmica] Ouvi: {texto}")
+                        print(f"[Escuta Dinamica] Ouvi: {texto}")
                     except sr.UnknownValueError:
                         continue
                     except sr.RequestError:
@@ -105,38 +119,25 @@ class EscutaDinamica:
                     comando = texto.split(self.palavra_ativacao, 1)
                     if len(comando) > 1 and comando[1].strip():
                         cmd = comando[1].strip()
-                        print(f"[Escuta Dinâmica] Comando: {cmd}")
+                        print(f"[Escuta Dinamica] Comando: {cmd}")
                         threading.Thread(target=self.callback, args=(cmd,), daemon=True).start()
                     else:
-                        print("[Escuta Dinâmica] Diga seu comando...")
+                        print("[Escuta Dinamica] Diga seu comando...")
                         try:
                             audio2 = self._reconhecedor.listen(source, timeout=4, phrase_time_limit=10)
                             texto2 = self._reconhecedor.recognize_google(audio2, language="pt-BR").lower()
-                            print(f"[Escuta Dinâmica] Comando: {texto2}")
+                            print(f"[Escuta Dinamica] Comando: {texto2}")
                             threading.Thread(target=self.callback, args=(texto2,), daemon=True).start()
                         except Exception:
-                            print("[Escuta Dinâmica] Nao entendi o comando.")
+                            print("[Escuta Dinamica] Nao entendi o comando.")
                     _ouvindo = False
-                    print("[Escuta Dinâmica] Aguardando...")
+                    print("[Escuta Dinamica] Aguardando...")
 
                 except sr.WaitTimeoutError:
                     continue
                 except Exception as e:
-                    print(f"[Escuta Dinâmica] Erro: {e}")
+                    print(f"[Escuta Dinamica] Erro: {e}")
                     time.sleep(0.1)
-
-
-def listen(timeout=5, phrase_limit=10) -> str | None:
-    """Escuta o microfone usando speech_recognition nativo."""
-    try:
-        with sr.Microphone(sample_rate=16000) as source:
-            _recognizer.adjust_for_ambient_noise(source, duration=0.5)
-            audio = _recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_limit)
-            return _recognizer.recognize_google(audio, language="pt-BR")
-    except (sr.UnknownValueError, sr.RequestError, sr.WaitTimeoutError):
-        return None
-    except Exception:
-        return None
 
 
 async def _edge_speak(texto: str, voz: str, velocidade: float = 1.0):

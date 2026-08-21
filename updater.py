@@ -45,8 +45,17 @@ def tem_repo():
     return code == 0 and stdout == "true"
 
 
+_ultima_verificacao = 0
+_INTERVALO_CACHE = 3600  # 1 hora
+
+
 def verificar_atualizacoes():
-    """Verifica se ha atualizacoes pendentes no GitHub."""
+    """Verifica se ha atualizacoes pendentes no GitHub com cache de 1h."""
+    import time
+    agora = time.time()
+    if (agora - _ultima_verificacao) < _INTERVALO_CACHE:
+        return False, "Ja verificado recentemente."
+
     # Metodo 1: Git
     if tem_git() and tem_repo():
         _run_git(["fetch", "origin"])
@@ -55,8 +64,10 @@ def verificar_atualizacoes():
             try:
                 count = int(stdout)
                 if count > 0:
+                    _ultima_verificacao = agora
                     return True, f"{count} atualizacao(oes) disponivel(is)."
                 else:
+                    _ultima_verificacao = agora
                     return False, "Ja esta atualizado."
             except ValueError:
                 pass
@@ -73,6 +84,7 @@ def verificar_atualizacoes():
         with urllib.request.urlopen(req, timeout=10) as resp:
             dados = json.loads(resp.read())
             if not dados:
+                _ultima_verificacao = agora
                 return False, "Nao foi possivel verificar."
 
             commit_remoto = dados[0]["sha"]
@@ -89,19 +101,23 @@ def verificar_atualizacoes():
             if not hash_local:
                 with open(hash_file, "w") as f:
                     f.write(commit_remoto)
+                _ultima_verificacao = agora
                 return False, "Primeira verificacao."
 
             # Compara
             if hash_local != commit_remoto:
                 with open(hash_file, "w") as f:
                     f.write(commit_remoto)
+                _ultima_verificacao = agora
                 return True, f"Novidade: {msg_commit}"
             else:
+                _ultima_verificacao = agora
                 return False, "Ja esta atualizado."
 
     except Exception:
         pass
 
+    _ultima_verificacao = agora
     return False, "Nao foi possivel verificar atualizacoes."
 
 
