@@ -4,6 +4,7 @@ __pycache__/
 backups/
 lembretes.json
 config.json
+.last_update_hash
 *.mp3
 *.wav
 .env

@@ -15,9 +15,6 @@ from updater import tem_git, tem_repo, verificar_atualizacoes, aplicar_atualizac
 
 def _verificar_updates_gui(app):
     """Verifica atualizacoes em background e mostra popup se encontrar."""
-    if not tem_git() or not tem_repo():
-        return
-
     tem_updates, msg = verificar_atualizacoes()
     if not tem_updates:
         return
@@ -78,7 +75,7 @@ def _verificar_updates_gui(app):
                                  command=popup.destroy)
         btn_skip.pack(side="left", padx=5)
 
-    app.after(2000, _mostrar_popup)
+    app.after(3000, _mostrar_popup)
 
 
 def main():

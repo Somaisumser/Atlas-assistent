@@ -61,17 +61,44 @@ def verificar_atualizacoes():
             except ValueError:
                 pass
 
-    # Metodo 2: Verifica ultima versao via GitHub API ( leve)
+    # Metodo 2: Compara commit local com remoto via GitHub API
     try:
         import json
+
+        # Pega ultimo commit remoto
         req = urllib.request.Request(
             "https://api.github.com/repos/Somaisumser/jarvis-assistent/commits?sha=main&per_page=1",
             headers={"User-Agent": "Jarvis-Updater"}
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             dados = json.loads(resp.read())
-            if dados:
-                return True, "Nova versao disponivel no GitHub."
+            if not dados:
+                return False, "Nao foi possivel verificar."
+
+            commit_remoto = dados[0]["sha"]
+            msg_commit = dados[0]["commit"]["message"].split("\n")[0]
+
+            # Salva/le hash do ultimo commit conhecido
+            hash_file = os.path.join(JARVIS_DIR, ".last_update_hash")
+            hash_local = ""
+            if os.path.exists(hash_file):
+                with open(hash_file, "r") as f:
+                    hash_local = f.read().strip()
+
+            # Se nao tem hash salvo, salva o atual e nao avisa
+            if not hash_local:
+                with open(hash_file, "w") as f:
+                    f.write(commit_remoto)
+                return False, "Primeira verificacao."
+
+            # Compara
+            if hash_local != commit_remoto:
+                with open(hash_file, "w") as f:
+                    f.write(commit_remoto)
+                return True, f"Novidade: {msg_commit}"
+            else:
+                return False, "Ja esta atualizado."
+
     except Exception:
         pass
 
