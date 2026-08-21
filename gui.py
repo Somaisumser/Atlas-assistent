@@ -566,7 +566,29 @@ class JarvisApp(ctk.CTk):
         self.after(0, lambda: self.stop_btn.configure(fg_color=RED))
         self.log("jarvis", resp)
         self._set_status("Pronto")
-        threading.Thread(target=speak, args=(resp, self.vozelecionada, self.velocidade_voz), daemon=True).start()
+
+        # Se tem tabela + fala, fala so a parte de texto (ultima linha)
+        if "\n+" in resp and resp.count("\n+") >= 1:
+            partes = resp.split("\n\n")
+            texto_fala = partes[-1] if len(partes) > 1 else ""
+            if texto_fala:
+                threading.Thread(target=speak, args=(texto_fala, self.vozelecionada, self.velocidade_voz), daemon=True).start()
+            else:
+                # Tenta pegar apos a ultima tabela
+                linhas = resp.split("\n")
+                fala_linhas = []
+                after_table = False
+                for l in linhas:
+                    if l.startswith("+"):
+                        after_table = True
+                        continue
+                    if after_table and l.strip():
+                        fala_linhas.append(l.strip())
+                texto_fala = " ".join(fala_linhas)
+                if texto_fala:
+                    threading.Thread(target=speak, args=(texto_fala, self.vozelecionada, self.velocidade_voz), daemon=True).start()
+        else:
+            threading.Thread(target=speak, args=(resp, self.vozelecionada, self.velocidade_voz), daemon=True).start()
 
     def _atualizar_modelos(self):
         """Busca modelos instalados no Ollama e atualiza o dropdown."""
