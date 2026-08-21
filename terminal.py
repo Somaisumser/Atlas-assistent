@@ -83,30 +83,31 @@ def processar(texto):
     text_low = texto.lower().strip()
 
     # Abrir programa (com opcao de monitor)
-    m = re.match(r"(?:abra|abrir|abre|iniciar|inicia)\s+(.+)", text_low)
+    m = re.match(r"(?:abra|abrir|abre|iniciar|inicia|quero|preciso|pode|pode me)\s+(.+)", text_low)
     if m:
         resto = m.group(1)
         monitor = _parse_monitor(resto)
         nome_limpo = re.sub(r"\s*(?:no|na)\s+(?:\w+\s+)?monitor\s*\d*", "", resto, flags=re.IGNORECASE)
         nome_limpo = re.sub(r"\s*(?:\w+\s+)?monitor\s*\d*", "", nome_limpo, flags=re.IGNORECASE)
+        nome_limpo = re.sub(r"^(?:o|a|os|as|um|uma|o\s+|a\s+)", "", nome_limpo, flags=re.IGNORECASE)
         return open_program(_limpar_artigo(nome_limpo.strip()), monitor=monitor)
 
     # Fechar programa
-    m = re.match(r"(?:feche|fechar|fecha|mate|matar)\s+(.+)", text_low)
+    m = re.match(r"(?:feche|fechar|fecha|mate|matar|encerrar|encerre|fechar o|fechar a)\s+(.+)", text_low)
     if m:
         return close_program(_limpar_artigo(m.group(1)))
 
-    # Monitorar PC
-    if "monitor" in text_low or "status" in text_low or "desempenho" in text_low:
+    # Monitorar PC - varias formas
+    if re.search(r"(?:monitorar|monitora|status|desempenho|como\s+(?:esta|estao|esta\s+o)|qual\s+(?:o|a|as|os)\s+(?:status|desempenho|situacao|estado)|verificar\s+(?:o\s+)?pc|computador|maquina)", text_low):
         return "Permita-me verificar o PC, Senhor.\n" + monitor_pc() + "\n\n" + monitor_pc_fala()
 
-    # Programas abertos
-    if "programas" in text_low and ("aberto" in text_low or "rodando" in text_low):
+    # Programas abertos - varias formas
+    if re.search(r"(?:programas?\s+(?:abertos?|rodando|em\s+execucao|em\s+uso)|quais?\s+(?:os|estao)\s+(?:abertos?|rodando)|o\s+que\s+(?:esta|estao)\s+(?:aberto|rodando|rodando)|lista\s+de\s+programas?|mostrar?\s+programas?)", text_low):
         return "Aqui esta a lista, Senhor.\n" + list_running() + "\n\n" + list_running_fala()
 
     # Lembrete
     m = re.match(
-        r"(?:lembre|lembrete|avise|aviso)\s+(.+?)\s+(?:em|daqui|daqui a)\s+(\d+)\s*(?:minuto|min|hora|h)",
+        r"(?:lembre|lembrete|avise|aviso|me\s+avise|me\s+lembre|lembra|avisar)\s+(.+?)\s+(?:em|daqui|daqui a|daqui\s+a)\s+(\d+)\s*(?:minuto|min|hora|h)",
         text_low,
     )
     if m:
@@ -117,26 +118,26 @@ def processar(texto):
         return add_reminder(texto_l, mins)
 
     # Listar lembretes
-    if "lembretes" in text_low:
+    if re.search(r"(?:lembretes?|avisos?|meus\s+lembretes?|o\s+que\s+(?:tenho|devo)\s+(?:para|pra)\s+fazer|compromissos?)", text_low):
         return "Aqui estao seus lembretes, Senhor.\n" + list_reminders()
 
     # Listar arquivos
-    m = re.match(r"(?:liste|lista|mostre)\s+(?:os\s+)?(?:arquivos?|pastas?)\s+(?:em|de|na)\s+(.+)", text_low)
+    m = re.match(r"(?:liste|lista|mostre|mostrar|ver|verificar)\s+(?:os\s+)?(?:arquivos?|pastas?|o\s+conteudo)\s+(?:em|de|na|do)\s+(.+)", text_low)
     if m:
         return "Permita-me verificar, Senhor.\n" + list_dir(m.group(1).strip())
 
     # Criar arquivo
-    m = re.match(r"(?:cria|crie)\s+(?:um\s+)?arquivo\s+(.+?)\s+(?:com|que tenha|contendo)\s+(.+)", text_low)
+    m = re.match(r"(?:cria|crie|criar|criar\s+um|novo\s+arquivo)\s+(?:um\s+)?arquivo\s+(.+?)\s+(?:com|que tenha|contendo|chamado|named)\s+(.+)", text_low)
     if m:
         return "Criando o arquivo, Senhor.\n" + create_file(m.group(1).strip(), m.group(2).strip())
 
     # Deletar arquivo
-    m = re.match(r"(?:delete|deleta|apague|remova)\s+(.+)", text_low)
+    m = re.match(r"(?:delete|deleta|apague|remova|excluir|exclua|deletar|apagar|remover)\s+(.+)", text_low)
     if m:
         return "Removendo, Senhor.\n" + delete_file(m.group(1).strip())
 
     # Trocar voz
-    m = re.match(r"(?:troca|trocar|muda|mudar)\s+voz\s+(.+)", text_low)
+    m = re.match(r"(?:troca|trocar|muda|mudar|altera|alterar|coloca|colocar)\s+voz\s+(.+)", text_low)
     if m:
         nome = m.group(1).strip().title()
         if nome in VOZES:
@@ -144,12 +145,12 @@ def processar(texto):
         return f"Peço desculpas, Senhor, mas a voz '{nome}' nao foi encontrada. Opcoes: {', '.join(VOZES.keys())}"
 
     # Listar vozes
-    if "vozes" in text_low or "listar vozes" in text_low:
+    if re.search(r"(?:vozes?|listar\s+vozes?|quais\s+(?:as|são)\s+as\s+vozes?|opcoes?\s+de\s+voz)", text_low):
         lista = "\n".join(f"- {nome}: {vid}" for nome, vid in VOZES.items())
         return f"Vozes disponiveis, Senhor:\n{lista}"
 
     # Velocidade da voz
-    m = re.match(r"(?:velocidade|veloc|rapido|lento|devagar)\s+(?:da\s+)?voz\s+(\d+\.?\d*)", text_low)
+    m = re.match(r"(?:velocidade|veloc|rapido|lento|devagar|acelerar|desacelerar)\s+(?:da\s+)?voz\s+(\d+\.?\d*)", text_low)
     if m:
         vel = float(m.group(1))
         if 0.5 <= vel <= 2.0:

@@ -508,39 +508,56 @@ class JarvisApp(ctk.CTk):
 
     def _check_system_commands(self, text):
         # Abrir programa (com opcao de monitor)
-        m = re.match(r"(?:abra|abrir|abre|iniciar|inicia)\s+(.+)", text)
+        m = re.match(r"(?:abra|abrir|abre|iniciar|inicia|quero|preciso|pode|pode me)\s+(.+)", text)
         if m:
             resto = m.group(1)
             monitor = self._parse_monitor(resto)
             # Remove a parte do monitor do nome do programa
             nome_limpo = re.sub(r"\s*(?:no|na)\s+(?:\w+\s+)?monitor\s*\d*", "", resto, flags=re.IGNORECASE)
             nome_limpo = re.sub(r"\s*(?:\w+\s+)?monitor\s*\d*", "", nome_limpo, flags=re.IGNORECASE)
+            # Remove conectivos comuns no inicio
+            nome_limpo = re.sub(r"^(?:o|a|os|as|um|uma|o\s+|a\s+)", "", nome_limpo, flags=re.IGNORECASE)
             return open_program(self._limpar_artigo(nome_limpo.strip()), monitor=monitor)
-        m = re.match(r"(?:feche|fechar|fecha|mate|matar)\s+(.+)", text)
+        m = re.match(r"(?:feche|fechar|fecha|mate|matar|encerrar|encerre|fechar o|fechar a)\s+(.+)", text)
         if m:
             return close_program(self._limpar_artigo(m.group(1)))
-        if "monitor" in text or "status" in text or "desempenho" in text:
+
+        # Monitorar PC - varias formas
+        if re.search(r"(?:monitorar|monitora|status|desempenho|como\s+(?:esta|estao|esta\s+o)|qual\s+(?:o|a|as|os)\s+(?:status|desempenho|situacao|estado)|verificar\s+(?:o\s+)?pc|computador|maquina)", text):
             return "Permita-me verificar o PC, Senhor.\n" + monitor_pc() + "\n\n" + monitor_pc_fala()
-        if "programas" in text and ("aberto" in text or "rodando" in text):
+
+        # Programas abertos - varias formas
+        if re.search(r"(?:programas?\s+(?:abertos?|rodando|em\s+execucao|em\s+uso)|quais?\s+(?:os|estao)\s+(?:abertos?|rodando)|o\s+que\s+(?:esta|estao)\s+(?:aberto|rodando|rodando)|lista\s+de\s+programas?|mostrar?\s+programas?)", text):
             return "Aqui esta a lista, Senhor.\n" + list_running() + "\n\n" + list_running_fala()
-        m = re.match(r"(?:lembre|lembrete|avise|aviso)\s+(.+?)\s+(?:em|daqui|daqui a)\s+(\d+)\s*(?:minuto|min|hora|h)", text)
+
+        # Lembrete
+        m = re.match(r"(?:lembre|lembrete|avise|aviso|me\s+avise|me\s+lembre|lembra|avisar)\s+(.+?)\s+(?:em|daqui|daqui a|daqui\s+a)\s+(\d+)\s*(?:minuto|min|hora|h)", text)
         if m:
             texto_lembrete = m.group(1)
             minutos = int(m.group(2))
             if "hora" in text:
                 minutos *= 60
             return add_reminder(texto_lembrete, minutos)
-        if "lembretes" in text:
+
+        # Listar lembretes
+        if re.search(r"(?:lembretes?|avisos?|meus\s+lembretes?|o\s+que\s+(?:tenho|devo)\s+(?:para|pra)\s+fazer|compromissos?)", text):
             return "Aqui estao seus lembretes, Senhor.\n" + list_reminders()
-        m = re.match(r"(?:liste|lista|mostre)\s+(?:os\s+)?(?:arquivos?|pastas?)\s+(?:em|de|na)\s+(.+)", text)
+
+        # Listar arquivos
+        m = re.match(r"(?:liste|lista|mostre|mostre|mostrar|ver|verificar)\s+(?:os\s+)?(?:arquivos?|pastas?|o\s+conteudo)\s+(?:em|de|na|do)\s+(.+)", text)
         if m:
             return "Permita-me verificar, Senhor.\n" + list_dir(m.group(1).strip())
-        m = re.match(r"(?:cria|crie)\s+(?:um\s+)?arquivo\s+(.+?)\s+(?:com|que tenha|contendo)\s+(.+)", text)
+
+        # Criar arquivo
+        m = re.match(r"(?:cria|crie|criar|criar\s+um|novo\s+arquivo)\s+(?:um\s+)?arquivo\s+(.+?)\s+(?:com|que tenha|contendo|chamado|named)\s+(.+)", text)
         if m:
             return "Criando o arquivo, Senhor.\n" + create_file(m.group(1).strip(), m.group(2).strip())
-        m = re.match(r"(?:delete|deleta|apague|remova)\s+(.+)", text)
+
+        # Deletar arquivo
+        m = re.match(r"(?:delete|deleta|apague|remova|excluir|exclua|deletar|apagar|remover)\s+(.+)", text)
         if m:
             return "Removendo, Senhor.\n" + delete_file(m.group(1).strip())
+
         return None
 
     def _handle_code(self, lang, task):
