@@ -216,7 +216,7 @@ class JarvisApp(ctk.CTk):
         def _add_comandos(aba, comandos):
             for titulo, exemplos in comandos:
                 ctk.CTkLabel(aba, text=titulo, font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", pady=(8, 2))
-                for ex in exemplos.split("\n"):
+                for ex in exemplos:
                     ctk.CTkLabel(aba, text=f"  \"{ex}\"", font=ctk.CTkFont(size=11), text_color=MUTED, anchor="w").pack(anchor="w", padx=(10, 0))
 
         aba_sistema = tab.add("Sistema")
