@@ -82,10 +82,27 @@ def validar_modificacao(conteudo_original, novo_conteudo):
     linhas_orig = len(conteudo_original.splitlines())
     linhas_nova = len(novo_conteudo.splitlines())
 
-    if linhas_nova < linhas_orig * 0.3:
+    # Verifica se tem funcoes originais no novo codigo
+    funcoes_orig = set()
+    for l in conteudo_original.splitlines():
+        m = re.match(r'\s*(?:def|class)\s+(\w+)', l)
+        if m:
+            funcoes_orig.add(m.group(1))
+
+    funcoes_nova = set()
+    for l in novo_conteudo.splitlines():
+        m = re.match(r'\s*(?:def|class)\s+(\w+)', l)
+        if m:
+            funcoes_nova.add(m.group(1))
+
+    funcoes_faltando = funcoes_orig - funcoes_nova
+    if funcoes_faltando:
+        return False, f"ATENCAO: Funcoes/Classes faltando no codigo novo: {', '.join(funcoes_faltando)}"
+
+    if linhas_nova < linhas_orig * 0.5:
         return False, f"ATENCAO: Arquivo original tem {linhas_orig} linhas, novo tem {linhas_nova}. Parece que o codigo foi deletado!"
 
-    if linhas_nova > linhas_orig * 2:
+    if linhas_nova > linhas_orig * 2.5:
         return False, f"ATENCAO: Arquivo original tem {linhas_orig} linhas, novo tem {linhas_nova}. Parece codigo duplicado!"
 
     return True, "OK"
@@ -106,18 +123,35 @@ def gerar_diff(original, novo, nome_arquivo):
 
 def _extrair_codigo_completo(resposta, num_linhas_esperado):
     """Extrai o codigo do resposta, tentando varios padroes."""
-    # Tenta padrao principal
-    m = re.search(r"```(?:python)?\s*\n(.*?)```", resposta, re.DOTALL)
+    # Tenta padrao principal: ```python ... ```
+    m = re.search(r"```python\s*\n(.*?)```", resposta, re.DOTALL)
     if m:
         codigo = m.group(1).strip()
-        # Verifica se tem numero razoavel de linhas
         linhas = len(codigo.splitlines())
-        if linhas >= num_linhas_esperado * 0.3:
+        if linhas >= num_linhas_esperado * 0.5:
             return codigo
 
-    # Tenta sem crases (ultima tentativa)
-    if "def " in resposta or "class " in resposta or "import " in resposta:
-        return resposta.strip()
+    # Tenta sem linguagem especifica: ``` ... ```
+    m = re.search(r"```\s*\n(.*?)```", resposta, re.DOTALL)
+    if m:
+        codigo = m.group(1).strip()
+        linhas = len(codigo.splitlines())
+        if linhas >= num_linhas_esperado * 0.5:
+            return codigo
+
+    # Tenta sem crases: se tem def/class no inicio e tem muitas linhas
+    linhas = resposta.splitlines()
+    if linhas:
+        # Procura onde comeca o codigo
+        inicio = 0
+        for i, l in enumerate(linhas):
+            if l.strip().startswith(('def ', 'class ', 'import ', 'from ')):
+                inicio = i
+                break
+        codigo = "\n".join(linhas[inicio:])
+        num_linhas = len(codigo.splitlines())
+        if num_linhas >= num_linhas_esperado * 0.5:
+            return codigo.strip()
 
     return None
 
@@ -126,30 +160,42 @@ def sugerir_modificacao(nome_arquivo, descricao, conteudo_atual):
     """Usa Ollama para sugerir uma modificacao no codigo."""
     num_linhas = len(conteudo_atual.splitlines())
 
-    prompt = f"""Voce e um programador Python expert. Modifique o codigo abaixo conforme a descricao.
+    prompt = f"""INSTRUCAO CRITICA: Voce deve retornar o ARQUIVO COMPLETO com a mudanca aplicada.
+Se voce retornar apenas parte do codigo, o sistema sera danificado.
 
-CODIGO ATUAL ({num_linhas} linhas):
+ARQUIVO ATUAL ({num_linhas} linhas):
 ```python
 {conteudo_atual}
 ```
 
-DESCRICAO DA MUDANCA:
+O QUE MUDAR:
 {descricao}
 
-REGRAS OBRIGATORIAS:
-1. Retorne o ARQUIVO COMPLETO modificado (todas as {num_linhas} linhas aproximadamente)
-2. NAO retorne apenas a funcao modificada - RETORNE O ARQUIVO INTEIRO
-3. Nao remova funcoes, classes ou imports existentes
-4. Nao mude nada alem do que foi pedido
-5. Mantenha a identacao e estilo do codigo original
-6. Responda APENAS com o codigo entre crases triplas
+REGRAS ABSOLUTAS:
+1. Retorne TODAS as {num_linhas} linhas do arquivo (ou mais, se precisar adicionar)
+2. NUNCA retorne apenas a funcao modificada
+3. NUNCA retorne "// ... resto do codigo" ou "..."
+4. NAO remova NENHUMA funcao, classe ou import existente
+5. NAO mude nada alem do que foi pedido
+6. Mantenha toda a identacao e estilo original
+7. Responda APENAS com o codigo entre ```python ```
 
-IMPORTANTE: O resultado deve ser o ARQUIVO INTEIRO COM TODAS AS FUNCOES!
+O ARQUIVO DEVE CONTER TODAS ESTAS FUNCOES:
+{chr(10).join('- ' + l.strip() for l in conteudo_atual.splitlines() if l.strip().startswith('def ') or l.strip().startswith('class '))}
 
-Codigo modificado:"""
+RETORNE O ARQUIVO COMPLETO INTEIRO:"""
 
     resposta = chat(prompt)
-    return _extrair_codigo_completo(resposta, num_linhas)
+    codigo = _extrair_codigo_completo(resposta, num_linhas)
+
+    if codigo:
+        linhas_codigo = len(codigo.splitlines())
+        # Se retornou menos de 50% do original, algo deu errado
+        if linhas_codigo < num_linhas * 0.5:
+            return None
+        return codigo
+
+    return None
 
 
 def aplicar_modificacao(nome_arquivo, descricao):
