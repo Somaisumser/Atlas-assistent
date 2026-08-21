@@ -20,6 +20,8 @@ VOZES = {
     "Antonio": "pt-BR-AntonioNeural",
     "Francisca": "pt-BR-FranciscaNeural",
     "Thalita": "pt-BR-ThalitaMultilingualNeural",
+    "Valerio": "pt-PT-DuarteNeural",
+    "Giovanna": "pt-PT-RaquelNeural",
 }
 
 VOZ_PADRAO = "pt-BR-AntonioNeural"
