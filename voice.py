@@ -19,9 +19,7 @@ _parar_fala = threading.Event()
 VOZES = {
     "Antonio": "pt-BR-AntonioNeural",
     "Francisca": "pt-BR-FranciscaNeural",
-    "Giovanna": "pt-BR-GiovannaNeural",
-    "Valerio": "pt-BR-ValerioNeural",
-    "Thalita": "pt-BR-ThalitaNeural",
+    "Thalita": "pt-BR-ThalitaMultilingualNeural",
 }
 
 VOZ_PADRAO = "pt-BR-AntonioNeural"
