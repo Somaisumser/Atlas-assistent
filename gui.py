@@ -94,7 +94,7 @@ class JarvisApp(ctk.CTk):
         title_box.pack(side="left")
         ctk.CTkLabel(title_box, text="JARVIS", font=ctk.CTkFont(size=28, weight="bold"), text_color=ACCENT).pack(anchor="w")
         ctk.CTkLabel(title_box, text="assistente pessoal", font=ctk.CTkFont(size=11), text_color=MUTED).pack(anchor="w")
-        ctk.CTkButton(header, text="Config", width=60, height=32, corner_radius=10, fg_color=PANEL, hover_color="#1a1a3a", text_color=TEXT, font=ctk.CTkFont(size=11), command=self._open_settings).pack(side="right")
+        ctk.CTkButton(header, text="\u2699", width=40, height=32, corner_radius=10, fg_color=PANEL, hover_color="#1a1a3a", text_color=TEXT, font=ctk.CTkFont(size=16), command=self._open_settings).pack(side="right")
 
         self.status = ctk.CTkLabel(self, text="Pronto", font=ctk.CTkFont(size=12), text_color=MUTED)
         self.status.pack(anchor="w", padx=20)
