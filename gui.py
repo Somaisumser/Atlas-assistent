@@ -206,49 +206,117 @@ class JarvisApp(ctk.CTk):
     def _open_help(self):
         win = ctk.CTkToplevel(self)
         win.title("Comandos do Jarvis")
-        win.geometry("500x600")
+        win.geometry("450x520")
         win.configure(fg_color=BG)
         win.grab_set()
 
-        scroll = ctk.CTkScrollableFrame(win, fg_color=PANEL, corner_radius=10)
-        scroll.pack(padx=15, pady=15, fill="both", expand=True)
+        tab = ctk.CTkTabview(win, fg_color=PANEL, segmented_button_fg_color=BG, segmented_button_selected_color=ACCENT, segmented_button_unselected_color=PANEL, text_color=TEXT, corner_radius=10)
+        tab.pack(padx=15, pady=15, fill="both", expand=True)
 
-        categorias = {
-            "Sistema": [
-                ("Monitorar PC", "qual o status do pc\ncomo esta o desempenho\nmonitorar pc\nverificar computador"),
-                ("Programas abertos", "quais programas estao abertos\no que esta rodando\nlista de programas"),
-                ("Abrir programa", "abra o discord\nabrir spotify\niniciar steam\nquero abrir o chrome"),
-                ("Fechar programa", "feche o discord\nfechar spotify\nencerrar steam"),
-                ("Abrir em monitor", "abra o discord no monitor 2\nabrir spotify no segundo monitor"),
-            ],
-            "Lembretes": [
-                ("Criar lembrete", "me avise em 5 minutos\nlembra de beber agua em 1 hora\navisar em 30 min"),
-                ("Ver lembretes", "meus lembretes\nlembretes\ncompromissos"),
-            ],
-            "Arquivos": [
-                ("Listar arquivos", "liste os arquivos em C:\\\nmostrar pastas em Documentos\nver conteudo de Downloads"),
-                ("Criar arquivo", "crie um arquivo notas.txt com conteudo\nnovo arquivo lista.md com itens"),
-                ("Deletar arquivo", "delete notas.txt\napague lixo.txt\nremover arquivo antigo"),
-            ],
-            "Pesquisa e Codigo": [
-                ("Pesquisar", "pesquise na internet\nprocure sobre python\nbusque notícias"),
-                ("Criar codigo", "crie um codigo em python para\ncrie um programa em java que"),
-            ],
-            "Voz": [
-                ("Trocar voz", "trocar voz para Antonio\nmudar voz para Francisca"),
-                ("Velocidade", "velocidade da voz 1.5\nvoz rapida\nvoz devagar"),
-                ("Listar vozes", "quais sao as vozes\nlistar vozes"),
-            ],
-            "Modo Desenvolvedor": [
-                ("Modificar codigo", "Use a aba Dev na GUI para modificar arquivos do Jarvis"),
-            ],
-        }
-
-        for categoria, comandos in categorias.items():
-            ctk.CTkLabel(scroll, text=f"  {categoria}", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 5))
+        def _add_comandos(aba, comandos):
             for titulo, exemplos in comandos:
-                ctk.CTkLabel(scroll, text=titulo, font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", padx=(15, 0))
-                ctk.CTkLabel(scroll, text=exemplos, font=ctk.CTkFont(size=11), text_color=MUTED, anchor="w", justify="left").pack(anchor="w", padx=(25, 0), pady=(0, 5))
+                ctk.CTkLabel(aba, text=titulo, font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", pady=(8, 2))
+                for ex in exemplos.split("\n"):
+                    ctk.CTkLabel(aba, text=f"  \"{ex}\"", font=ctk.CTkFont(size=11), text_color=MUTED, anchor="w").pack(anchor="w", padx=(10, 0))
+
+        aba_sistema = tab.add("Sistema")
+        _add_comandos(aba_sistema, [
+            ("Monitorar PC", [
+                "qual o status do pc",
+                "como esta o desempenho",
+                "monitorar pc",
+                "verificar computador",
+            ]),
+            ("Programas abertos", [
+                "quais programas estao abertos",
+                "o que esta rodando",
+                "lista de programas",
+            ]),
+            ("Abrir programa", [
+                "abra o discord",
+                "abrir spotify",
+                "iniciar steam",
+                "quero abrir o chrome",
+            ]),
+            ("Fechar programa", [
+                "feche o discord",
+                "fechar spotify",
+                "encerrar steam",
+            ]),
+            ("Abrir em monitor", [
+                "abra o discord no monitor 2",
+                "abrir spotify no segundo monitor",
+            ]),
+        ])
+
+        aba_lembretes = tab.add("Lembretes")
+        _add_comandos(aba_lembretes, [
+            ("Criar lembrete", [
+                "me avise em 5 minutos",
+                "lembra de beber agua em 1 hora",
+                "avisar em 30 min",
+            ]),
+            ("Ver lembretes", [
+                "meus lembretes",
+                "lembretes",
+                "compromissos",
+            ]),
+        ])
+
+        aba_arquivos = tab.add("Arquivos")
+        _add_comandos(aba_arquivos, [
+            ("Listar arquivos", [
+                "liste os arquivos em C:\\",
+                "mostrar pastas em Documentos",
+                "ver conteudo de Downloads",
+            ]),
+            ("Criar arquivo", [
+                "crie um arquivo notas.txt com conteudo",
+                "novo arquivo lista.md com itens",
+            ]),
+            ("Deletar arquivo", [
+                "delete notas.txt",
+                "apague lixo.txt",
+                "remover arquivo antigo",
+            ]),
+        ])
+
+        aba_pesquisa = tab.add("Pesquisa")
+        _add_comandos(aba_pesquisa, [
+            ("Pesquisar na internet", [
+                "pesquise na internet",
+                "procure sobre python",
+                "busque noticias",
+            ]),
+            ("Criar codigo", [
+                "crie um codigo em python para",
+                "crie um programa em java que",
+            ]),
+        ])
+
+        aba_voz = tab.add("Voz")
+        _add_comandos(aba_voz, [
+            ("Trocar voz", [
+                "trocar voz para Antonio",
+                "mudar voz para Francisca",
+            ]),
+            ("Velocidade", [
+                "velocidade da voz 1.5",
+                "voz rapida",
+                "voz devagar",
+            ]),
+            ("Listar vozes", [
+                "quais sao as vozes",
+                "listar vozes",
+            ]),
+        ])
+
+        aba_dev = tab.add("Dev")
+        _add_comandos(aba_dev, [
+            ("Modificar codigo", [
+                "Use a aba Dev na GUI para modificar arquivos do Jarvis",
+            ]),
+        ])
 
     def _abrir_pesquisa(self):
         win = ctk.CTkToplevel(self)
