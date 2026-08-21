@@ -1,0 +1,102 @@
+============================================================
+  COMO COLOCAR O JARVIS NO GITHUB E ATUALIZAR EM OUTROS PC
+============================================================
+
+
+PASSO 1: CRIAR CONTA NO GITHUB
+-------------------------------
+1. Acesse: https://github.com
+2. Crie uma conta gratuita.
+3. Verifique seu email.
+
+
+PASSO 2: CRIAR REPOSITORIO
+-------------------------------
+1. No GitHub, clique no "+" (canto superior direito).
+2. Selecione "New repository".
+3. Nome: jarvis-assistant
+4. Selecione "Private" (privado).
+5. Clique em "Create repository".
+
+
+PASSO 3: ENVIAR O JARVIS PARA O GITHUB
+----------------------------------------
+Abra o terminal na pasta do Jarvis:
+
+  cd "C:\Users\krato\Desktop\OpenCode codigos\Jarvis"
+
+Execute esses comandos (UMA VEZ SO):
+
+  git init
+  git add .
+  git commit -m "Versao inicial do Jarvis"
+  git branch -M main
+  git remote add origin https://github.com/SEU-usuario/jarvis-assistant.git
+  git push -u origin main
+
+(Substitua SEU-usuario pelo seu nome de usuario do GitHub)
+
+
+PASSO 4: ATUALIZAR PELO GITHUB
+--------------------------------
+Sempre que fizer mudancas no Jarvis, rode:
+
+  git add .
+  git commit -m "Descricao da mudanca"
+  git push
+
+No OUTRO PC, rode:
+
+  git pull
+
+Ou clique duas vezes em "atualizar.bat".
+
+
+PASSO 5: CLONAR EM OUTRO PC
+------------------------------
+No outro PC, instale o Git: https://git-scm.com/download/win
+
+Depois rode no terminal:
+
+  git clone https://github.com/SEU-usuario/jarvis-assistant.git
+  cd jarvis-assistant
+  "Instalar Jarvis.bat"
+
+
+============================================================
+  RESUMO RAPIDO
+============================================================
+
+FAZER MUDANCAS:
+  git add .
+  git commit -m "minha mudanca"
+  git push
+
+ATUALIZAR OUTRO PC:
+  git pull
+
+OU: clique duas vezes em "atualizar.bat"
+
+
+============================================================
+  COMANDOS UTEIS
+============================================================
+
+  git status           - Ver o que mudou
+  git log --oneline    - Ver historico de mudancas
+  git diff             - Ver mudancas detalhadas
+  git pull             - Baixar atualizacoes
+  git push             - Enviar atualizacoes
+
+
+============================================================
+  DICAS
+============================================================
+
+- Sempre committe mudancas com mensagens claras.
+- Nao envie arquivos grandes (videos, etc).
+- O venv/ e ignorado automaticamente (nao vai pro GitHub).
+- lembretes.json tambem e ignorado (cada PC tem os seus).
+- Use "Private" no repositorio para manter seguro.
+
+============================================================
