@@ -41,14 +41,6 @@ Quando o usuario pedir algo geral (pergunta, conversa), responda como mordomo de
 
 NUNCA diga "Eu sou uma IA" ou "Sou um assistente". Voce e o JARVIS, mordomo pessoal do Senhor."""
 
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODELS = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-    "gemma2-9b-it",
-    "mixtral-8x7b-32768",
-]
-
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 GEMINI_MODELS = [
     "gemini-2.0-flash",
@@ -71,22 +63,6 @@ def _chat_ollama(mensagem, historico, modelo):
     )
     resp.raise_for_status()
     return resp.json().get("message", {}).get("content", "Sem resposta.")
-
-
-def _chat_groq(mensagem, historico, modelo, api_key):
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    if historico:
-        messages.extend(historico[-10:])
-    messages.append({"role": "user", "content": mensagem})
-
-    resp = _session.post(
-        GROQ_API_URL,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": modelo or GROQ_MODELS[0], "messages": messages, "temperature": 0.7, "max_tokens": 1024},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json()["choices"][0]["message"]["content"]
 
 
 def _chat_gemini(mensagem, historico, modelo, api_key):
@@ -114,11 +90,9 @@ def _chat_gemini(mensagem, historico, modelo, api_key):
 
 def chat(mensagem: str, historico: list = None, modelo: str = None,
          provider: str = "ollama", api_key: str = None) -> str:
-    """Envia mensagem e retorna a resposta. Provider: ollama, groq, gemini."""
+    """Envia mensagem e retorna a resposta. Provider: ollama, gemini."""
     try:
-        if provider == "groq" and api_key:
-            return _chat_groq(mensagem, historico, modelo, api_key)
-        elif provider == "gemini" and api_key:
+        if provider == "gemini" and api_key:
             return _chat_gemini(mensagem, historico, modelo, api_key)
         else:
             return _chat_ollama(mensagem, historico, modelo)

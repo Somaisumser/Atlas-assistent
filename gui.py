@@ -10,7 +10,7 @@ def _strip_ansi(texto):
     """Remove codigos ANSI de cores para exibicao na GUI."""
     return re.sub(r'\033\[[0-9;]*m', '', texto)
 
-from brain import chat
+from brain import chat, GEMINI_MODELS
 from voice import listen, speak, stop_speak, VOZES, EscutaDinamica
 from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala
 from file_manager import list_dir, read_file, create_file, delete_file
@@ -81,9 +81,7 @@ class JarvisApp(ctk.CTk):
         self.modelo_ollama = "llama3.2"
         self.escuta_dinamica = None
         self._provider = "ollama"
-        self._groq_key = ""
         self._gemini_key = ""
-        self._groq_model = "llama-3.3-70b-versatile"
         self._gemini_model = "gemini-2.0-flash"
         self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
         self._load_config()
@@ -222,17 +220,9 @@ class JarvisApp(ctk.CTk):
         box_provider.pack(fill="x", pady=(0, 8))
         ctk.CTkLabel(box_provider, text="Provider de IA", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
         self._provider_var = ctk.StringVar(value=self._provider)
-        for prov, label in [("ollama", "Ollama (Local, Gratis)"), ("groq", "Groq (Nuvem, Gratis)"), ("gemini", "Google Gemini (Nuvem, Gratis)")]:
+        for prov, label in [("ollama", "Ollama (Local, Gratis)"), ("gemini", "Google Gemini (Nuvem, Gratis)")]:
             ctk.CTkRadioButton(box_provider, text=label, variable=self._provider_var, value=prov, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13)).pack(anchor="w", pady=3, padx=(20, 0))
         ctk.CTkFrame(box_provider, fg_color="transparent", height=8).pack()
-
-        box_groq = ctk.CTkFrame(scroll_api, fg_color="#1a1a3a", corner_radius=8)
-        box_groq.pack(fill="x", pady=(0, 8))
-        ctk.CTkLabel(box_groq, text="Groq API Key", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
-        self._groq_key_entry = ctk.CTkEntry(box_groq, fg_color=PANEL, border_color="#1a1a3a", text_color=TEXT, placeholder_text="gsk_...", height=36, font=ctk.CTkFont(size=12), show="*")
-        self._groq_key_entry.pack(fill="x", padx=(20, 12), pady=(0, 6))
-        self._groq_key_entry.insert(0, self._groq_key)
-        ctk.CTkLabel(box_groq, text="Gratuito: 30 req/min - groq.com", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(0, 8))
 
         box_gemini = ctk.CTkFrame(scroll_api, fg_color="#1a1a3a", corner_radius=8)
         box_gemini.pack(fill="x", pady=(0, 8))
@@ -241,12 +231,6 @@ class JarvisApp(ctk.CTk):
         self._gemini_key_entry.pack(fill="x", padx=(20, 12), pady=(0, 6))
         self._gemini_key_entry.insert(0, self._gemini_key)
         ctk.CTkLabel(box_gemini, text="Gratuito: 15 req/min - aistudio.google.com", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(0, 8))
-
-        box_groq_model = ctk.CTkFrame(scroll_api, fg_color="#1a1a3a", corner_radius=8)
-        box_groq_model.pack(fill="x", pady=(0, 8))
-        ctk.CTkLabel(box_groq_model, text="Modelo Groq", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
-        self._groq_model_var = ctk.StringVar(value=self._groq_model)
-        ctk.CTkOptionMenu(box_groq_model, values=GROQ_MODELS, variable=self._groq_model_var, fg_color=PANEL, button_color="#1a1a3a", button_hover_color=ACCENT, text_color=TEXT, width=350, font=ctk.CTkFont(size=12)).pack(padx=(20, 12), pady=(0, 12))
 
         box_gemini_model = ctk.CTkFrame(scroll_api, fg_color="#1a1a3a", corner_radius=8)
         box_gemini_model.pack(fill="x", pady=(0, 8))
@@ -289,9 +273,7 @@ class JarvisApp(ctk.CTk):
             info = self._modelos_info.get(display, {})
             self.modelo_ollama = info.get("nome", "llama3.2")
             self._provider = self._provider_var.get()
-            self._groq_key = self._groq_key_entry.get().strip()
             self._gemini_key = self._gemini_key_entry.get().strip()
-            self._groq_model = self._groq_model_var.get()
             self._gemini_model = self._gemini_model_var.get()
             self._atualizar_host_ollama()
             win.destroy()
@@ -861,9 +843,7 @@ class JarvisApp(ctk.CTk):
 
     def _get_api_key(self):
         """Retorna a API key do provider selecionado."""
-        if self._provider == "groq":
-            return self._groq_key
-        elif self._provider == "gemini":
+        if self._provider == "gemini":
             return self._gemini_key
         return None
 
@@ -877,9 +857,7 @@ class JarvisApp(ctk.CTk):
                 self.velocidade_voz = cfg.get("velocidade", self.velocidade_voz)
                 self.modelo_ollama = cfg.get("modelo", self.modelo_ollama)
                 self._provider = cfg.get("provider", self._provider)
-                self._groq_key = cfg.get("groq_key", self._groq_key)
                 self._gemini_key = cfg.get("gemini_key", self._gemini_key)
-                self._groq_model = cfg.get("groq_model", self._groq_model)
                 self._gemini_model = cfg.get("gemini_model", self._gemini_model)
         except Exception:
             pass
@@ -892,9 +870,7 @@ class JarvisApp(ctk.CTk):
                 "velocidade": self.velocidade_voz,
                 "modelo": self.modelo_ollama,
                 "provider": self._provider,
-                "groq_key": self._groq_key,
                 "gemini_key": self._gemini_key,
-                "groq_model": self._groq_model,
                 "gemini_model": self._gemini_model,
             }
             with open(self._config_path, "w", encoding="utf-8") as f:

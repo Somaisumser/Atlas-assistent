@@ -9,7 +9,7 @@ import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from brain import chat, GROQ_MODELS, GEMINI_MODELS
+from brain import chat, GEMINI_MODELS
 from voice import listen, speak, VOZES, EscutaDinamica, stop_speak
 from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala
 from file_manager import list_dir, read_file, create_file, delete_file
@@ -23,40 +23,32 @@ VOZ_ATUAL = "Antonio"
 VELOCIDADE = 1.0
 escuta_dinamica = None
 _provider = "ollama"
-_groq_key = ""
 _gemini_key = ""
-_groq_model = "llama-3.3-70b-versatile"
 _gemini_model = "gemini-2.0-flash"
 _config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 
 def _load_config():
-    global _provider, _groq_key, _gemini_key, _groq_model, _gemini_model
+    global _provider, _gemini_key, _gemini_model
     try:
         if os.path.exists(_config_path):
             with open(_config_path, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
             _provider = cfg.get("provider", _provider)
-            _groq_key = cfg.get("groq_key", _groq_key)
             _gemini_key = cfg.get("gemini_key", _gemini_key)
-            _groq_model = cfg.get("groq_model", _groq_model)
             _gemini_model = cfg.get("gemini_model", _gemini_model)
     except Exception:
         pass
 
 
 def _get_api_key():
-    if _provider == "groq":
-        return _groq_key
-    elif _provider == "gemini":
+    if _provider == "gemini":
         return _gemini_key
     return None
 
 
 def _get_model():
-    if _provider == "groq":
-        return _groq_model
-    elif _provider == "gemini":
+    if _provider == "gemini":
         return _gemini_model
     return None
 
