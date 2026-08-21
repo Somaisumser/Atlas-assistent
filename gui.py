@@ -83,7 +83,10 @@ class JarvisApp(ctk.CTk):
         self.velocidade_voz = 1.0
         self.modelo_ollama = "llama3.2"
         self.escuta_dinamica = None
+        self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+        self._load_config()
         self._build_ui()
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.after(100, self._iniciar_reminders)
         self.log("Jarvis", "Aos seus servicos, Senhor. Como posso ajuda-lo?")
 
@@ -599,3 +602,35 @@ class JarvisApp(ctk.CTk):
         host = self._host_entry.get().strip()
         if host:
             OLLAMA_HOST = host
+
+    def _load_config(self):
+        """Carrega configuracoes salvas."""
+        try:
+            if os.path.exists(self._config_path):
+                with open(self._config_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                self.vozelecionada = cfg.get("voz", self.vozelecionada)
+                self.velocidade_voz = cfg.get("velocidade", self.velocidade_voz)
+                self.modelo_ollama = cfg.get("modelo", self.modelo_ollama)
+        except Exception:
+            pass
+
+    def _save_config(self):
+        """Salva configuracoes atuais."""
+        try:
+            cfg = {
+                "voz": self.vozelecionada,
+                "velocidade": self.velocidade_voz,
+                "modelo": self.modelo_ollama,
+            }
+            with open(self._config_path, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+    def _on_close(self):
+        """Salva config e fecha o Jarvis."""
+        self._save_config()
+        if self.escuta_dinamica and self.escuta_dinamica.ativo:
+            self.escuta_dinamica.parar()
+        self.destroy()

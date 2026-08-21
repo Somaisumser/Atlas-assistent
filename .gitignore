@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 backups/
 lembretes.json
+config.json
 *.mp3
 *.wav
 .env
