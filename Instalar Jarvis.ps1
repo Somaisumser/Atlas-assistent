@@ -133,7 +133,6 @@ Write-Host "[5/5] Criando Jarvis.bat..." -ForegroundColor Yellow
 
 $batContent = @"
 @echo off
-chcp 65001 >nul 2>&1
 title Jarvis - Mordomo Virtual
 cd /d "%~dp0"
 venv\Scripts\python.exe main.py

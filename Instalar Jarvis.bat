@@ -108,6 +108,8 @@ if %errorlevel% neq 0 (
     pip install ddgs --quiet
     pip install pywin32 --quiet
     pip install screeninfo --quiet
+    pip install vosk --quiet
+    pip install sounddevice --quiet
 )
 
 :: Verifica se o PyAudio foi instalado
@@ -157,7 +159,6 @@ echo [5/5] Criando Jarvis.bat...
 
 (
     echo @echo off
-    echo chcp 65001 ^>nul 2^>^&1
     echo title Jarvis - Mordomo Virtual
     echo cd /d "%%~dp0"
     echo venv\Scripts\python.exe main.py
