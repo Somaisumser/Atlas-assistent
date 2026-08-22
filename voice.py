@@ -20,6 +20,7 @@ _ouvindo = False
 _parar_fala = threading.Event()
 _vosk_model = None
 _vosk_model_path = None
+_vosk_model_falhou = False
 
 VOZES = {
     "Antonio": "pt-BR-AntonioNeural",
@@ -66,23 +67,25 @@ def _calibrar_mic():
 
 def _carregar_vosk_model(modelo_idioma="pt"):
     """Carrega o modelo Vosk."""
-    global _vosk_model, _vosk_model_path
+    global _vosk_model, _vosk_model_path, _vosk_model_falhou
     if _vosk_model is not None:
         return _vosk_model
+    if _vosk_model_falhou:
+        return None
 
     try:
-        from vosk import Model, KaldiRecognizer
+        from vosk import Model
     except ImportError:
         print("[Vosk] Pacote vosk nao instalado. Use: pip install vosk")
+        _vosk_model_falhou = True
         return None
 
     model_name = VOSK_MODELS.get(modelo_idioma, VOSK_MODELS["pt"])
     model_path = os.path.join(VOSK_MODEL_DIR, model_name)
 
     if not os.path.exists(model_path):
-        print(f"[Vosk] Modelo nao encontrado em: {model_path}")
-        print(f"[Vosk] Baixe em: https://alphacephei.com/vosk/models")
-        print(f"[Vosk] Extraia para: {VOSK_MODEL_DIR}")
+        print(f"[Vosk] Modelo nao encontrado: {model_name}")
+        _vosk_model_falhou = True
         return None
 
     try:
@@ -91,7 +94,19 @@ def _carregar_vosk_model(modelo_idioma="pt"):
         print(f"[Vosk] Modelo carregado: {model_name}")
         return _vosk_model
     except Exception as e:
-        print(f"[Vosk] Erro ao carregar modelo: {e}")
+        print(f"[Vosk] Modelo {model_name} falhou: {e}")
+        print(f"[Vosk] Tentando modelo pequeno...")
+        small_name = "vosk-model-small-pt-0.3"
+        small_path = os.path.join(VOSK_MODEL_DIR, small_name)
+        if os.path.exists(small_path):
+            try:
+                _vosk_model = Model(small_path)
+                _vosk_model_path = small_path
+                print(f"[Vosk] Modelo fallback carregado: {small_name}")
+                return _vosk_model
+            except Exception as e2:
+                print(f"[Vosk] Modelo pequeno tambem falhou: {e2}")
+        _vosk_model_falhou = True
         return None
 
 
