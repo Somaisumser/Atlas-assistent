@@ -32,7 +32,7 @@ VOZES = {
 VOZ_PADRAO = "pt-BR-AntonioNeural"
 
 VOSK_MODELS = {
-    "pt": "vosk-model-small-pt-0.3",
+    "pt": "vosk-model-pt-fb-v0.1.1-20220516_2113",
     "en": "vosk-model-small-en-us-0.15",
 }
 
