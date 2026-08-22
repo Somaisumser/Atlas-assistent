@@ -66,6 +66,11 @@ GREEN = "#00ff88"
 RED = "#ff4444"
 ORANGE = "#ffaa00"
 
+BG_PADRAO = BG
+PANEL_PADRAO = PANEL
+ACCENT_PADRAO = ACCENT
+TEXT_PADRAO = TEXT
+
 
 class JarvisApp(ctk.CTk):
     def __init__(self):
@@ -275,10 +280,10 @@ class JarvisApp(ctk.CTk):
         scroll_tema.pack(fill="both", expand=True)
 
         self._tema_cores = {
-            "accent": ctk.StringVar(value=self._tema.get("accent", ACCENT)),
-            "bg": ctk.StringVar(value=self._tema.get("bg", BG)),
-            "panel": ctk.StringVar(value=self._tema.get("panel", PANEL)),
-            "text": ctk.StringVar(value=self._tema.get("text", TEXT)),
+            "accent": ctk.StringVar(value=self._tema.get("accent", ACCENT_PADRAO)),
+            "bg": ctk.StringVar(value=self._tema.get("bg", BG_PADRAO)),
+            "panel": ctk.StringVar(value=self._tema.get("panel", PANEL_PADRAO)),
+            "text": ctk.StringVar(value=self._tema.get("text", TEXT_PADRAO)),
         }
 
         box_tema_cor = ctk.CTkFrame(scroll_tema, fg_color="#1a1a3a", corner_radius=8)
@@ -320,12 +325,14 @@ class JarvisApp(ctk.CTk):
             ("panel", "Cor dos Painéis", "Caixas e cards"),
             ("text", "Cor do Texto", "Texto principal"),
         ]
+        self._tema_color_labels = {}
         for key, titulo, desc in cores_config:
             row = ctk.CTkFrame(box_tema_cor, fg_color="transparent")
             row.pack(fill="x", padx=(20, 12), pady=4)
             ctk.CTkLabel(row, text=titulo, font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, width=140, anchor="w").pack(side="left")
             color_lbl = ctk.CTkLabel(row, text=self._tema_cores[key].get(), text_color=self._tema_cores[key].get(), font=ctk.CTkFont(size=12), width=80)
             color_lbl.pack(side="left", padx=(0, 8))
+            self._tema_color_labels[key] = color_lbl
             ctk.CTkButton(row, text="Escolher", width=80, height=28, corner_radius=6, fg_color="#2a2a4a", hover_color="#3a3a5a", text_color=TEXT, font=ctk.CTkFont(size=11), command=lambda k=key, l=color_lbl: _escolher_cor(k, l)).pack(side="left")
             ctk.CTkLabel(row, text=desc, text_color=MUTED, font=ctk.CTkFont(size=10)).pack(side="left", padx=(8, 0))
 
@@ -348,19 +355,15 @@ class JarvisApp(ctk.CTk):
         box_reset.pack(fill="x", pady=(0, 8))
         ctk.CTkLabel(box_reset, text="Restaurar Padrao", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
         def _resetar_tema():
-            self._tema_cores["accent"].set(ACCENT)
-            self._tema_cores["bg"].set(BG)
-            self._tema_cores["panel"].set(PANEL)
-            self._tema_cores["text"].set(TEXT)
+            self._tema_cores["accent"].set(ACCENT_PADRAO)
+            self._tema_cores["bg"].set(BG_PADRAO)
+            self._tema_cores["panel"].set(PANEL_PADRAO)
+            self._tema_cores["text"].set(TEXT_PADRAO)
             self._intensidade_slider.set(1.0)
             self._intensidade_label.configure(text="Intensidade: 1.0x")
-            for row in box_tema_cor.winfo_children():
-                for w in row.winfo_children():
-                    if isinstance(w, ctk.CTkLabel) and w.cget("text").startswith("#"):
-                        idx = list(row.winfo_children()).index(w)
-                        for k_idx, (key, _, _) in enumerate(cores_config):
-                            if abs(idx - list(row.winfo_children()).index(list(row.winfo_children())[1])) < 1:
-                                pass
+            for key, lbl in self._tema_color_labels.items():
+                cor = self._tema_cores[key].get()
+                lbl.configure(text=cor, text_color=cor)
             _atualizar_preview()
         ctk.CTkButton(box_reset, text="Restaurar cores padrao", fg_color="#2a2a4a", hover_color=RED, text_color=TEXT, font=ctk.CTkFont(size=12), command=_resetar_tema).pack(pady=(0, 12), padx=(20, 0), anchor="w")
         ctk.CTkFrame(box_reset, fg_color="transparent", height=5).pack()
