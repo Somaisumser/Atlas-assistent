@@ -823,17 +823,17 @@ class JarvisApp(ctk.CTk):
         if m:
             return close_program(self._limpar_artigo(m.group(1)))
 
-        # Monitorar PC - varias formas
-        if re.search(r"(?:monitorar|monitora|verificar\s+(?:o\s+)?pc|computador|maquina|como\s+(?:esta|estao)\s+(?:o\s+)?(?:pc|computador|desempenho|sistema)|qual\s+(?:o|a|as|os)\s+(?:status|desempenho|situacao|estado)\s+(?:do\s+)?(?:pc|computador)|status\s+(?:do\s+)?pc|desempenho\s+(?:do\s+)?pc)", text):
-            return "Permita-me verificar o PC, Senhor.\n" + monitor_pc() + "\n\n" + monitor_pc_fala()
-
         # Desligar/Reiniciar/Suspender
-        if re.search(r"(?:desligue|desligar|desliga|desligar o computador|desligar o pc|desligar minha maquina)", text):
+        if re.search(r"(?:desligue|desligar|desliga)", text) and re.search(r"(?:computador|pc|maquina|sistema)", text):
             return desligar_computador()
-        if re.search(r"(?:reinicie|reiniciar|reinicia|reiniciar o computador|reiniciar o pc|reboot)", text):
+        if re.search(r"(?:reinicie|reiniciar|reinicia|reboot)", text) and re.search(r"(?:computador|pc|maquina|sistema)", text):
             return reiniciar_computador()
-        if re.search(r"(?:suspenda|suspender|suspends|hibernar|hibernar o computador|suspenso|modo\s+suspens)", text):
+        if re.search(r"(?:suspenda|suspender|hibernar|suspenso|modo\s+suspens)", text):
             return suspender_computador()
+
+        # Monitorar PC - varias formas
+        if re.search(r"(?:monitorar|monitora|verificar\s+(?:o\s+)?pc|como\s+(?:esta|estao)\s+(?:o\s+)?(?:pc|computador|desempenho|sistema)|qual\s+(?:o|a|as|os)\s+(?:status|desempenho|situacao|estado)\s+(?:do\s+)?(?:pc|computador)|status\s+(?:do\s+)?pc|desempenho\s+(?:do\s+)?pc)", text):
+            return "Permita-me verificar o PC, Senhor.\n" + monitor_pc() + "\n\n" + monitor_pc_fala()
 
         # Programas abertos - varias formas
         if re.search(r"(?:programas?\s+(?:abertos?|rodando|em\s+execucao|em\s+uso)|quais?\s+(?:os|estao)\s+(?:abertos?|rodando)|o\s+que\s+(?:esta|estao)\s+(?:aberto|rodando|rodando)|lista\s+de\s+programas?|mostrar?\s+programas?)", text):
