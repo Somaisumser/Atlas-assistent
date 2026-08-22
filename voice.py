@@ -33,7 +33,7 @@ VOZES = {
 VOZ_PADRAO = "pt-BR-AntonioNeural"
 
 VOSK_MODELS = {
-    "pt": "vosk-model-pt-fb-v0.1.1-20220516_2113",
+    "pt": "vosk-model-small-pt-0.3",
     "en": "vosk-model-small-en-us-0.15",
 }
 
@@ -94,18 +94,7 @@ def _carregar_vosk_model(modelo_idioma="pt"):
         print(f"[Vosk] Modelo carregado: {model_name}")
         return _vosk_model
     except Exception as e:
-        print(f"[Vosk] Modelo {model_name} falhou: {e}")
-        print(f"[Vosk] Tentando modelo pequeno...")
-        small_name = "vosk-model-small-pt-0.3"
-        small_path = os.path.join(VOSK_MODEL_DIR, small_name)
-        if os.path.exists(small_path):
-            try:
-                _vosk_model = Model(small_path)
-                _vosk_model_path = small_path
-                print(f"[Vosk] Modelo fallback carregado: {small_name}")
-                return _vosk_model
-            except Exception as e2:
-                print(f"[Vosk] Modelo pequeno tambem falhou: {e2}")
+        print(f"[Vosk] Modelo falhou: {e}")
         _vosk_model_falhou = True
         return None
 
