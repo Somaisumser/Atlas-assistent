@@ -211,25 +211,23 @@ class EscutaDinamica:
             if model:
                 try:
                     from vosk import KaldiRecognizer
-                    import wave
-                    import io
 
-                    wave_data = audio.get_wav_data(rate=16000, width=2, channels=1)
-                    wf = io.BytesIO(wave_data)
+                    wav_data = audio.get_wav_data(rate=16000, width=2, channels=1)
+
+                    pcm_data = wav_data[44:]
 
                     rec = KaldiRecognizer(model, 16000)
-                    rec.SetWords(True)
 
                     chunk_size = 4000
-                    while True:
-                        data = wf.read(chunk_size)
-                        if len(data) == 0:
-                            break
-                        rec.AcceptWaveform(data)
+                    for i in range(0, len(pcm_data), chunk_size):
+                        chunk = pcm_data[i:i+chunk_size]
+                        rec.AcceptWaveform(chunk)
 
                     result = json.loads(rec.FinalResult())
-                    return result.get("text", "").strip() or None
-                except Exception:
+                    texto = result.get("text", "").strip()
+                    return texto.lower() if texto else None
+                except Exception as e:
+                    print(f"[Vosk] Erro reconhecimento: {e}")
                     return None
 
         try:
