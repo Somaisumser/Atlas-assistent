@@ -51,6 +51,7 @@ _INTERVALO_CACHE = 3600  # 1 hora
 
 def verificar_atualizacoes():
     """Verifica se ha atualizacoes pendentes no GitHub com cache de 1h."""
+    global _ultima_verificacao
     import time
     agora = time.time()
     if (agora - _ultima_verificacao) < _INTERVALO_CACHE:
