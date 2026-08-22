@@ -212,9 +212,7 @@ class EscutaDinamica:
                 try:
                     from vosk import KaldiRecognizer
 
-                    wav_data = audio.get_wav_data(rate=16000, width=2, channels=1)
-
-                    pcm_data = wav_data[44:]
+                    pcm_data = audio.get_raw_data()
 
                     rec = KaldiRecognizer(model, 16000)
 
