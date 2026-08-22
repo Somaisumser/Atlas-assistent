@@ -829,10 +829,13 @@ class JarvisApp(ctk.CTk):
             modelos = obter_modelos_ollama()
             self._modelos_info = {m["display"]: m for m in modelos}
             displays = [m["display"] for m in modelos] or ["Nenhum modelo encontrado"]
-            self.after(0, lambda: self._model_combo.configure(values=displays))
-            if modelos:
-                self.after(0, lambda: self._model_var.set(modelos[0]["display"]))
-                self.after(0, lambda: self._atualizar_info_modelo(modelos[0]["display"]))
+            try:
+                self.after(0, lambda: self._model_combo.configure(values=displays))
+                if modelos:
+                    self.after(0, lambda: self._model_var.set(modelos[0]["display"]))
+                    self.after(0, lambda: self._atualizar_info_modelo(modelos[0]["display"]))
+            except Exception:
+                pass
         threading.Thread(target=buscar, daemon=True).start()
 
     def _atualizar_info_modelo(self, display):
