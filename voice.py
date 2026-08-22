@@ -6,9 +6,6 @@ import threading
 import tempfile
 import os
 import pygame
-import time
-import json
-import struct
 
 _engine = None
 _lock = threading.Lock()
@@ -18,9 +15,6 @@ _mixer_ready = False
 VELOCIDADE = 1.0
 _ouvindo = False
 _parar_fala = threading.Event()
-_vosk_model = None
-_vosk_model_path = None
-_vosk_model_falhou = False
 
 VOZES = {
     "Antonio": "pt-BR-AntonioNeural",
@@ -31,13 +25,6 @@ VOZES = {
 }
 
 VOZ_PADRAO = "pt-BR-AntonioNeural"
-
-VOSK_MODELS = {
-    "pt": "vosk-model-small-pt-0.3",
-    "en": "vosk-model-small-en-us-0.15",
-}
-
-VOSK_MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models", "vosk")
 
 
 def _get_engine():
@@ -65,79 +52,6 @@ def _calibrar_mic():
         pass
 
 
-def _carregar_vosk_model(modelo_idioma="pt"):
-    """Carrega o modelo Vosk."""
-    global _vosk_model, _vosk_model_path, _vosk_model_falhou
-    if _vosk_model is not None:
-        return _vosk_model
-    if _vosk_model_falhou:
-        return None
-
-    try:
-        from vosk import Model
-    except ImportError:
-        print("[Vosk] Pacote vosk nao instalado. Use: pip install vosk")
-        _vosk_model_falhou = True
-        return None
-
-    model_name = VOSK_MODELS.get(modelo_idioma, VOSK_MODELS["pt"])
-    model_path = os.path.join(VOSK_MODEL_DIR, model_name)
-
-    if not os.path.exists(model_path):
-        print(f"[Vosk] Modelo nao encontrado: {model_name}")
-        _vosk_model_falhou = True
-        return None
-
-    try:
-        _vosk_model = Model(model_path)
-        _vosk_model_path = model_path
-        print(f"[Vosk] Modelo carregado: {model_name}")
-        return _vosk_model
-    except Exception as e:
-        print(f"[Vosk] Modelo falhou: {e}")
-        _vosk_model_falhou = True
-        return None
-
-
-def listen_vosk(timeout=5, phrase_limit=10, modelo_idioma="pt"):
-    """Escuta usando Vosk (offline)."""
-    model = _carregar_vosk_model(modelo_idioma)
-    if model is None:
-        return listen(timeout, phrase_limit)
-
-    try:
-        from vosk import KaldiRecognizer
-        import sounddevice as sd
-        import queue
-
-        q = queue.Queue()
-
-        def callback(indata, frames, time_info, status):
-            q.put(bytes(indata))
-
-        with sd.RawInputStream(samplerate=16000, blocksize=8000, dtype="int16",
-                               channels=1, callback=callback):
-            rec = KaldiRecognizer(model, 16000)
-            start_time = time.time()
-
-            while True:
-                if time.time() - start_time > timeout:
-                    break
-                data = q.get()
-                if rec.AcceptWaveform(data):
-                    result = json.loads(rec.Result())
-                    texto = result.get("text", "").strip()
-                    if texto:
-                        return texto
-
-            final = json.loads(rec.FinalResult())
-            return final.get("text", "").strip() or None
-
-    except Exception as e:
-        print(f"[Vosk] Erro: {e}")
-        return None
-
-
 def listen(timeout=5, phrase_limit=10) -> str | None:
     _calibrar_mic()
     try:
@@ -151,7 +65,7 @@ def listen(timeout=5, phrase_limit=10) -> str | None:
 
 
 class EscutaDinamica:
-    def __init__(self, callback, palavra_ativacao="jarvis", motor="google"):
+    def __init__(self, callback, palavra_ativacao="jarvis"):
         self.callback = callback
         self.palavra_ativacao = palavra_ativacao.lower()
         self.ativo = False
@@ -161,7 +75,6 @@ class EscutaDinamica:
         self._reconhecedor.dynamic_energy_threshold = True
         self._reconhecedor.pause_threshold = 0.8
         self._reconhecedor.phrase_threshold = 0.3
-        self.motor = motor
 
     def iniciar(self):
         if self.ativo:
@@ -173,65 +86,7 @@ class EscutaDinamica:
     def parar(self):
         self.ativo = False
 
-    def _ouvir_vosk(self, source, timeout=5):
-        """Escuta com Vosk usando o microfone do speech_recognition."""
-        model = _carregar_vosk_model()
-        if model is None:
-            return None
-
-        try:
-            from vosk import KaldiRecognizer
-            import queue
-
-            q = queue.Queue()
-
-            def callback(indata, frames, time_info, status):
-                q.put(bytes(indata))
-
-            with sd.RawInputStream(samplerate=16000, blocksize=8000, dtype="int16",
-                                   channels=1, callback=callback):
-                rec = KaldiRecognizer(model, 16000)
-                start_time = time.time()
-
-                while True:
-                    if time.time() - start_time > timeout:
-                        break
-                    data = q.get()
-                    if rec.AcceptWaveform(data):
-                        result = json.loads(rec.Result())
-                        texto = result.get("text", "").strip()
-                        if texto:
-                            return texto
-
-                final = json.loads(rec.FinalResult())
-                return final.get("text", "").strip() or None
-        except Exception:
-            return None
-
     def _reconhecer(self, audio):
-        """Reconhece audio usando o motor selecionado."""
-        if self.motor == "vosk":
-            model = _carregar_vosk_model()
-            if model:
-                try:
-                    from vosk import KaldiRecognizer
-
-                    pcm_data = audio.get_raw_data()
-
-                    rec = KaldiRecognizer(model, 16000)
-
-                    chunk_size = 4000
-                    for i in range(0, len(pcm_data), chunk_size):
-                        chunk = pcm_data[i:i+chunk_size]
-                        rec.AcceptWaveform(chunk)
-
-                    result = json.loads(rec.FinalResult())
-                    texto = result.get("text", "").strip()
-                    return texto.lower() if texto else None
-                except Exception as e:
-                    print(f"[Vosk] Erro reconhecimento: {e}")
-                    return None
-
         try:
             return self._reconhecedor.recognize_google(audio, language="pt-BR").lower()
         except (sr.UnknownValueError, sr.RequestError):
@@ -239,7 +94,7 @@ class EscutaDinamica:
 
     def _loop(self):
         global _ouvindo
-        print(f"[Escuta Dinamica] Motor: {self.motor.upper()}")
+        print(f"[Escuta Dinamica] Motor: GOOGLE")
         print(f"[Escuta Dinamica] Pronta. Diga '{self.palavra_ativacao}'...")
 
         while self.ativo:
