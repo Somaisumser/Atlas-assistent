@@ -526,7 +526,7 @@ class JarvisApp(ctk.CTk):
                 if novo and diff:
                     self.after(0, lambda: _mostrar_resultado(diff, novo, arquivo))
                 else:
-                    erro = diff if diff else "Nao consegui gerar a modificacao.\nVerifique se o Ollama esta rodando."
+                    erro = diff if diff else f"Nao consegui gerar a modificacao.\nVerifique se o {self._provider.upper()} esta rodando."
                     self.after(0, lambda: _mostrar_erro(erro))
             threading.Thread(target=tarefa, daemon=True).start()
 

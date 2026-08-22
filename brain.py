@@ -81,8 +81,8 @@ def _chat_gemini(mensagem, historico, modelo, api_key):
     resp = _session.post(
         url,
         headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-        json={"contents": contents, "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024}},
-        timeout=30,
+        json={"contents": contents, "generationConfig": {"temperature": 0.7, "maxOutputTokens": 8192}},
+        timeout=120,
     )
     resp.raise_for_status()
     data = resp.json()

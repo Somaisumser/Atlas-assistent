@@ -185,16 +185,30 @@ O ARQUIVO DEVE CONTER TODAS ESTAS FUNCOES:
 
 RETORNE O ARQUIVO COMPLETO INTEIRO:"""
 
+    print(f"[Dev] Provider: {provider}, Modelo: {modelo}")
     resposta = chat(prompt, provider=provider, api_key=api_key, modelo=modelo)
+    
+    if not resposta:
+        print("[Dev] Resposta vazia do chat")
+        return None
+    
+    if "Erro" in resposta[:20] or "erro" in resposta[:20]:
+        print(f"[Dev] Erro do chat: {resposta[:200]}")
+        return None
+    
+    print(f"[Dev] Resposta recebida ({len(resposta)} chars)")
     codigo = _extrair_codigo_completo(resposta, num_linhas)
 
     if codigo:
         linhas_codigo = len(codigo.splitlines())
+        print(f"[Dev] Codigo extraido: {linhas_codigo} linhas (esperado: {num_linhas})")
         # Se retornou menos de 50% do original, algo deu errado
         if linhas_codigo < num_linhas * 0.5:
+            print("[Dev] Codigo muito curto, rejeitado")
             return None
         return codigo
 
+    print("[Dev] Nao conseguiu extrair codigo da resposta")
     return None
 
 
@@ -206,7 +220,7 @@ def aplicar_modificacao(nome_arquivo, descricao, provider="ollama", api_key=None
 
     novo_conteudo = sugerir_modificacao(nome_arquivo, descricao, conteudo, provider=provider, api_key=api_key, modelo=modelo)
     if not novo_conteudo:
-        return None, "Nao consegui gerar a modificacao. Verifique se o Ollama esta rodando.", None
+        return None, f"Nao consegui gerar a modificacao. Verifique se o {provider.upper()} esta rodando.", None
 
     valido, msg_validacao = validar_modificacao(conteudo, novo_conteudo)
     if not valido:
