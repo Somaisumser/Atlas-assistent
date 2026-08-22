@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from brain import chat, GEMINI_MODELS
 from voice import listen, speak, VOZES, EscutaDinamica, stop_speak
-from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala
+from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala, desligar_computador, reiniciar_computador, suspender_computador
 from file_manager import list_dir, read_file, create_file, delete_file
 from web_search import search
 from code_runner import run_code
@@ -130,6 +130,14 @@ def processar(texto):
     # Monitorar PC - varias formas
     if re.search(r"(?:monitorar|monitora|verificar\s+(?:o\s+)?pc|computador|maquina|como\s+(?:esta|estao)\s+(?:o\s+)?(?:pc|computador|desempenho|sistema)|qual\s+(?:o|a|as|os)\s+(?:status|desempenho|situacao|estado)\s+(?:do\s+)?(?:pc|computador)|status\s+(?:do\s+)?pc|desempenho\s+(?:do\s+)?pc)", text_low):
         return "Permita-me verificar o PC, Senhor.\n" + monitor_pc() + "\n\n" + monitor_pc_fala()
+
+    # Desligar/Reiniciar/Suspender
+    if re.search(r"(?:desligue|desligar|desliga|desligar o computador|desligar o pc|desligar minha maquina)", text_low):
+        return desligar_computador()
+    if re.search(r"(?:reinicie|reiniciar|reinicia|reiniciar o computador|reiniciar o pc|reboot)", text_low):
+        return reiniciar_computador()
+    if re.search(r"(?:suspenda|suspender|suspends|hibernar|hibernar o computador|suspenso|modo\s+suspens)", text_low):
+        return suspender_computador()
 
     # Programas abertos - varias formas
     if re.search(r"(?:programas?\s+(?:abertos?|rodando|em\s+execucao|em\s+uso)|quais?\s+(?:os|estao)\s+(?:abertos?|rodando)|o\s+que\s+(?:esta|estao)\s+(?:aberto|rodando|rodando)|lista\s+de\s+programas?|mostrar?\s+programas?)", text_low):

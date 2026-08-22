@@ -422,6 +422,24 @@ def _coletar_dados_pc():
     }
 
 
+def desligar_computador() -> str:
+    """Desliga o computador."""
+    subprocess.run(["shutdown", "/s", "/t", "10"], creationflags=subprocess.CREATE_NO_WINDOW)
+    return "Desligando o computador em 10 segundos, Senhor. Adeus."
+
+
+def reiniciar_computador() -> str:
+    """Reinicia o computador."""
+    subprocess.run(["shutdown", "/r", "/t", "10"], creationflags=subprocess.CREATE_NO_WINDOW)
+    return "Reiniciando o computador em 10 segundos, Senhor."
+
+
+def suspender_computador() -> str:
+    """Coloca o computador em modo suspensao."""
+    subprocess.run(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"], creationflags=subprocess.CREATE_NO_WINDOW)
+    return "Colocando o computador em modo suspensao, Senhor."
+
+
 def monitor_pc() -> str:
     """Retorna informacoes do PC formatadas."""
     d = _coletar_dados_pc()
