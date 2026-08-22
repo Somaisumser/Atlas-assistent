@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from tkinter import colorchooser
 import threading
 import re
 import os
@@ -83,8 +84,10 @@ class JarvisApp(ctk.CTk):
         self._provider = "ollama"
         self._gemini_key = ""
         self._gemini_model = "gemini-3.6-flash"
+        self._tema = {}
         self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
         self._load_config()
+        self._aplicar_tema()
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.after(100, self._iniciar_reminders)
@@ -266,6 +269,101 @@ class JarvisApp(ctk.CTk):
         for func in funcionalidades:
             ctk.CTkLabel(box_func, text=f"\u2713  {func}", font=ctk.CTkFont(size=13), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=2)
         ctk.CTkFrame(box_func, fg_color="transparent", height=10).pack()
+
+        aba_tema = tab.add("Tema")
+        scroll_tema = ctk.CTkScrollableFrame(aba_tema, fg_color="transparent")
+        scroll_tema.pack(fill="both", expand=True)
+
+        self._tema_cores = {
+            "accent": ctk.StringVar(value=self._tema.get("accent", ACCENT)),
+            "bg": ctk.StringVar(value=self._tema.get("bg", BG)),
+            "panel": ctk.StringVar(value=self._tema.get("panel", PANEL)),
+            "text": ctk.StringVar(value=self._tema.get("text", TEXT)),
+        }
+
+        box_tema_cor = ctk.CTkFrame(scroll_tema, fg_color="#1a1a3a", corner_radius=8)
+        box_tema_cor.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_tema_cor, text="Cores do Jarvis", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+
+        self._tema_preview = ctk.CTkFrame(box_tema_cor, fg_color=self._tema_cores["bg"].get(), corner_radius=8, border_width=2, border_color=self._tema_cores["accent"].get())
+        self._tema_preview.pack(fill="x", padx=(20, 20), pady=(0, 10))
+        ctk.CTkLabel(self._tema_preview, text="Preview", font=ctk.CTkFont(size=13, weight="bold"), text_color=self._tema_cores["accent"].get()).pack(pady=(8, 4))
+        ctk.CTkLabel(self._tema_preview, text="Texto de exemplo", font=ctk.CTkFont(size=12), text_color=self._tema_cores["text"].get()).pack(pady=(0, 8))
+
+        def _escolher_cor(key, label_widget):
+            atual = self._tema_cores[key].get()
+            cor = colorchooser.askcolor(initialcolor=atual, title="Escolha uma cor")
+            if cor and cor[1]:
+                self._tema_cores[key].set(cor[1])
+                label_widget.configure(text=cor[1], text_color=cor[1])
+                _atualizar_preview()
+
+        def _atualizar_preview():
+            try:
+                self._tema_preview.configure(
+                    fg_color=self._tema_cores["bg"].get(),
+                    border_color=self._tema_cores["accent"].get()
+                )
+                for w in self._tema_preview.winfo_children():
+                    if isinstance(w, ctk.CTkLabel):
+                        txt = w.cget("text")
+                        if txt == "Preview":
+                            w.configure(text_color=self._tema_cores["accent"].get())
+                        else:
+                            w.configure(text_color=self._tema_cores["text"].get())
+            except Exception:
+                pass
+
+        cores_config = [
+            ("accent", "Cor de Destaque", "Botoes, titulos, destaques"),
+            ("bg", "Cor de Fundo", "Fundo principal da janela"),
+            ("panel", "Cor dos Painéis", "Caixas e cards"),
+            ("text", "Cor do Texto", "Texto principal"),
+        ]
+        for key, titulo, desc in cores_config:
+            row = ctk.CTkFrame(box_tema_cor, fg_color="transparent")
+            row.pack(fill="x", padx=(20, 12), pady=4)
+            ctk.CTkLabel(row, text=titulo, font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, width=140, anchor="w").pack(side="left")
+            color_lbl = ctk.CTkLabel(row, text=self._tema_cores[key].get(), text_color=self._tema_cores[key].get(), font=ctk.CTkFont(size=12), width=80)
+            color_lbl.pack(side="left", padx=(0, 8))
+            ctk.CTkButton(row, text="Escolher", width=80, height=28, corner_radius=6, fg_color="#2a2a4a", hover_color="#3a3a5a", text_color=TEXT, font=ctk.CTkFont(size=11), command=lambda k=key, l=color_lbl: _escolher_cor(k, l)).pack(side="left")
+            ctk.CTkLabel(row, text=desc, text_color=MUTED, font=ctk.CTkFont(size=10)).pack(side="left", padx=(8, 0))
+
+        ctk.CTkFrame(box_tema_cor, fg_color="transparent", height=8).pack()
+
+        box_intensidade = ctk.CTkFrame(scroll_tema, fg_color="#1a1a3a", corner_radius=8)
+        box_intensidade.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_intensidade, text="Intensidade", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        ctk.CTkLabel(box_intensidade, text="Brilho do tema (aplica ao reiniciar)", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0))
+
+        self._intensidade_slider = ctk.CTkSlider(box_intensidade, from_=0.3, to=1.5, number_of_steps=12, width=380, fg_color=PANEL, progress_color=ACCENT, button_color=ACCENT, button_hover_color=ACCENT_DIM)
+        self._intensidade_slider.set(self._tema.get("intensidade", 1.0))
+        self._intensidade_slider.pack(anchor="w", padx=(20, 0), pady=(5, 0))
+        self._intensidade_label = ctk.CTkLabel(box_intensidade, text=f"Intensidade: {self._tema.get('intensidade', 1.0):.1f}x", text_color=TEXT, font=ctk.CTkFont(size=13))
+        self._intensidade_label.pack(anchor="w", padx=(20, 0), pady=(5, 0))
+        self._intensidade_slider.configure(command=lambda v: self._intensidade_label.configure(text=f"Intensidade: {v:.1f}x"))
+        ctk.CTkFrame(box_intensidade, fg_color="transparent", height=10).pack()
+
+        box_reset = ctk.CTkFrame(scroll_tema, fg_color="#1a1a3a", corner_radius=8)
+        box_reset.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_reset, text="Restaurar Padrao", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        def _resetar_tema():
+            self._tema_cores["accent"].set(ACCENT)
+            self._tema_cores["bg"].set(BG)
+            self._tema_cores["panel"].set(PANEL)
+            self._tema_cores["text"].set(TEXT)
+            self._intensidade_slider.set(1.0)
+            self._intensidade_label.configure(text="Intensidade: 1.0x")
+            for row in box_tema_cor.winfo_children():
+                for w in row.winfo_children():
+                    if isinstance(w, ctk.CTkLabel) and w.cget("text").startswith("#"):
+                        idx = list(row.winfo_children()).index(w)
+                        for k_idx, (key, _, _) in enumerate(cores_config):
+                            if abs(idx - list(row.winfo_children()).index(list(row.winfo_children())[1])) < 1:
+                                pass
+            _atualizar_preview()
+        ctk.CTkButton(box_reset, text="Restaurar cores padrao", fg_color="#2a2a4a", hover_color=RED, text_color=TEXT, font=ctk.CTkFont(size=12), command=_resetar_tema).pack(pady=(0, 12), padx=(20, 0), anchor="w")
+        ctk.CTkFrame(box_reset, fg_color="transparent", height=5).pack()
 
         def salvar():
             self.vozelecionada = self._voice_var.get()
@@ -879,6 +977,7 @@ class JarvisApp(ctk.CTk):
                 self._provider = cfg.get("provider", self._provider)
                 self._gemini_key = cfg.get("gemini_key", self._gemini_key)
                 self._gemini_model = cfg.get("gemini_model", self._gemini_model)
+                self._tema = cfg.get("tema", {})
         except Exception:
             pass
 
@@ -892,11 +991,48 @@ class JarvisApp(ctk.CTk):
                 "provider": self._provider,
                 "gemini_key": self._gemini_key,
                 "gemini_model": self._gemini_model,
+                "tema": {
+                    "accent": self._tema_cores["accent"].get(),
+                    "bg": self._tema_cores["bg"].get(),
+                    "panel": self._tema_cores["panel"].get(),
+                    "text": self._tema_cores["text"].get(),
+                    "intensidade": self._intensidade_slider.get(),
+                },
             }
             with open(self._config_path, "w", encoding="utf-8") as f:
                 json.dump(cfg, f, ensure_ascii=False, indent=2)
         except Exception:
             pass
+
+    def _aplicar_tema(self):
+        global BG, PANEL, ACCENT, ACCENT_DIM, TEXT, MUTED, GREEN, RED, ORANGE
+        if self._tema:
+            BG = self._tema.get("bg", BG)
+            PANEL = self._tema.get("panel", PANEL)
+            ACCENT = self._tema.get("accent", ACCENT)
+            TEXT = self._tema.get("text", TEXT)
+            inten = self._tema.get("intensidade", 1.0)
+            if inten != 1.0:
+                BG = self._ajustar_brilho(BG, inten)
+                PANEL = self._ajustar_brilho(PANEL, inten)
+                ACCENT = self._ajustar_brilho(ACCENT, inten)
+                TEXT = self._ajustar_brilho(TEXT, inten)
+            ACCENT_DIM = self._ajustar_brilho(ACCENT, 0.7)
+            MUTED = self._ajustar_brilho(TEXT, 0.5)
+            GREEN = "#00ff88"
+            RED = "#ff4444"
+            ORANGE = "#ffaa00"
+
+    @staticmethod
+    def _ajustar_brilho(hex_color, fator):
+        hex_color = hex_color.lstrip("#")
+        if len(hex_color) != 6:
+            return "#" + hex_color
+        r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+        r = min(255, int(r * fator))
+        g = min(255, int(g * fator))
+        b = min(255, int(b * fator))
+        return f"#{r:02x}{g:02x}{b:02x}"
 
     def _on_close(self):
         """Salva config e fecha o Jarvis."""
