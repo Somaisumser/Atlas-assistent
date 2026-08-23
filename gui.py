@@ -20,7 +20,7 @@ def _strip_ansi(texto):
     return re.sub(r'\033\[[0-9;]*m', '', texto)
 
 from brain import chat, GEMINI_MODELS
-from voice import listen, speak, stop_speak, VOZES, EscutaDinamica
+from voice import listen, speak, stop_speak, VOZES, EscutaDinamica, configurar_motor_voz
 from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala, desligar_computador, reiniciar_computador, suspender_computador
 from file_manager import list_dir, read_file, create_file, delete_file
 from web_search import search
@@ -97,10 +97,13 @@ class JarvisApp(ctk.CTk):
         self._provider = "ollama"
         self._gemini_key = ""
         self._gemini_model = "gemini-3.6-flash"
+        self._motor_voz = "google"
+        self._groq_key = ""
         self._tema = {}
         self._tray_icon = None
         self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
         self._load_config()
+        configurar_motor_voz(self._motor_voz, self._groq_key)
         self._aplicar_tema()
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -178,6 +181,23 @@ class JarvisApp(ctk.CTk):
         for nome, voz_id in VOZES.items():
             ctk.CTkRadioButton(box_voz, text=f"{nome}  ({voz_id})", variable=self._voice_var, value=nome, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13)).pack(anchor="w", pady=3, padx=(20, 0))
         ctk.CTkFrame(box_voz, fg_color="transparent", height=8).pack()
+
+        box_motor = ctk.CTkFrame(scroll_voz, fg_color="#1a1a3a", corner_radius=8)
+        box_motor.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_motor, text="Reconhecimento de Voz", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        self._motor_var = ctk.StringVar(value=self._motor_voz)
+        for motor, label in [("google", "Google (Gratuito, online)"), ("groq", "Groq Whisper (Mais preciso, Gratuito)")]:
+            ctk.CTkRadioButton(box_motor, text=label, variable=self._motor_var, value=motor, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13), command=self._on_motor_change).pack(anchor="w", pady=3, padx=(20, 0))
+        ctk.CTkFrame(box_motor, fg_color="transparent", height=8).pack()
+
+        self._box_groq = ctk.CTkFrame(box_motor, fg_color="transparent")
+        self._box_groq.pack(fill="x")
+        ctk.CTkLabel(self._box_groq, text="Groq API Key", font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=(0, 4))
+        self._groq_key_entry = ctk.CTkEntry(self._box_groq, fg_color=PANEL, border_color="#1a1a3a", text_color=TEXT, placeholder_text="gsk_...", height=32, font=ctk.CTkFont(size=12), show="*")
+        self._groq_key_entry.pack(fill="x", padx=(20, 12), pady=(0, 2))
+        self._groq_key_entry.insert(0, self._groq_key)
+        ctk.CTkLabel(self._box_groq, text="Gratis: console.groq.com - whisper-large-v3-turbo", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(0, 8))
+        self._on_motor_change()
 
         box_vel = ctk.CTkFrame(scroll_voz, fg_color="#1a1a3a", corner_radius=8)
         box_vel.pack(fill="x", pady=(0, 8))
@@ -390,6 +410,9 @@ class JarvisApp(ctk.CTk):
             self._provider = self._provider_var.get()
             self._gemini_key = self._gemini_key_entry.get().strip()
             self._gemini_model = self._gemini_model_var.get()
+            self._motor_voz = self._motor_var.get()
+            self._groq_key = self._groq_key_entry.get().strip()
+            configurar_motor_voz(self._motor_voz, self._groq_key)
             self._atualizar_host_ollama()
             win.destroy()
         ctk.CTkButton(win, text="Salvar", fg_color=ACCENT_DIM, hover_color=ACCENT, text_color=BG, font=ctk.CTkFont(size=14, weight="bold"), height=40, corner_radius=10, command=salvar).pack(pady=(0, 15), padx=15, fill="x")
@@ -979,6 +1002,12 @@ class JarvisApp(ctk.CTk):
             return self._gemini_model
         return self.modelo_ollama
 
+    def _on_motor_change(self):
+        if self._motor_var.get() == "groq":
+            self._box_groq.pack(fill="x")
+        else:
+            self._box_groq.pack_forget()
+
     def _on_provider_change(self):
         """Mostra/esconde configs baseado no provider selecionado."""
         prov = self._provider_var.get()
@@ -1001,6 +1030,8 @@ class JarvisApp(ctk.CTk):
                 self._provider = cfg.get("provider", self._provider)
                 self._gemini_key = cfg.get("gemini_key", self._gemini_key)
                 self._gemini_model = cfg.get("gemini_model", self._gemini_model)
+                self._motor_voz = cfg.get("motor_voz", self._motor_voz)
+                self._groq_key = cfg.get("groq_key", self._groq_key)
                 self._tema = cfg.get("tema", {})
         except Exception:
             pass
@@ -1015,6 +1046,8 @@ class JarvisApp(ctk.CTk):
                 "provider": self._provider,
                 "gemini_key": self._gemini_key,
                 "gemini_model": self._gemini_model,
+                "motor_voz": self._motor_voz,
+                "groq_key": self._groq_key,
                 "tema": {
                     "accent": self._tema_cores["accent"].get(),
                     "bg": self._tema_cores["bg"].get(),

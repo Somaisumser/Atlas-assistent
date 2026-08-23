@@ -6,6 +6,9 @@ import threading
 import tempfile
 import os
 import pygame
+import io
+import wave
+import requests
 
 _engine = None
 _lock = threading.Lock()
@@ -15,6 +18,8 @@ _mixer_ready = False
 VELOCIDADE = 1.0
 _ouvindo = False
 _parar_fala = threading.Event()
+_motor_voz = "google"
+_groq_key = ""
 
 VOZES = {
     "Antonio": "pt-BR-AntonioNeural",
@@ -52,12 +57,60 @@ def _calibrar_mic():
         pass
 
 
+def _audio_para_wav(audio: sr.AudioData) -> bytes:
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(audio.sample_rate)
+        wf.writeframes(audio.get_raw_data())
+    return buf.getvalue()
+
+
+def _reconhecer_google(audio: sr.AudioData) -> str | None:
+    try:
+        return _recognizer.recognize_google(audio, language="pt-BR")
+    except (sr.UnknownValueError, sr.RequestError):
+        return None
+
+
+def _reconhecer_groq(audio: sr.AudioData) -> str | None:
+    if not _groq_key:
+        return _reconhecer_google(audio)
+    try:
+        wav_data = _audio_para_wav(audio)
+        resp = requests.post(
+            "https://api.groq.com/openai/v1/audio/transcriptions",
+            headers={"Authorization": f"Bearer {_groq_key}"},
+            files={"file": ("audio.wav", wav_data, "audio/wav")},
+            data={"model": "whisper-large-v3-turbo", "language": "pt"},
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            return resp.json().get("text", "").strip()
+        return _reconhecer_google(audio)
+    except Exception:
+        return _reconhecer_google(audio)
+
+
+def _reconhecer_audio(audio: sr.AudioData) -> str | None:
+    if _motor_voz == "groq":
+        return _reconhecer_groq(audio)
+    return _reconhecer_google(audio)
+
+
+def configurar_motor_voz(motor: str, groq_key: str = ""):
+    global _motor_voz, _groq_key
+    _motor_voz = motor
+    _groq_key = groq_key
+
+
 def listen(timeout=8, phrase_limit=15) -> str | None:
     _calibrar_mic()
     try:
         with sr.Microphone(sample_rate=16000) as source:
             audio = _recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_limit)
-            return _recognizer.recognize_google(audio, language="pt-BR")
+            return _reconhecer_audio(audio)
     except (sr.UnknownValueError, sr.RequestError, sr.WaitTimeoutError):
         return None
     except Exception:
@@ -88,14 +141,13 @@ class EscutaDinamica:
         self.ativo = False
 
     def _reconhecer(self, audio):
-        try:
-            return self._reconhecedor.recognize_google(audio, language="pt-BR").lower()
-        except (sr.UnknownValueError, sr.RequestError):
-            return None
+        resultado = _reconhecer_audio(audio)
+        return resultado.lower() if resultado else None
 
     def _loop(self):
         global _ouvindo
-        print(f"[Escuta Dinamica] Motor: GOOGLE")
+        motor_nome = "GROQ WHISPER" if _motor_voz == "groq" else "GOOGLE"
+        print(f"[Escuta Dinamica] Motor: {motor_nome}")
         print(f"[Escuta Dinamica] Pronta. Diga '{self.palavra_ativacao}'...")
 
         while self.ativo:
