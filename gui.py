@@ -7,6 +7,13 @@ import sys
 import requests
 import json
 
+try:
+    import pystray
+    from PIL import Image, ImageDraw
+    HAS_TRAY = True
+except ImportError:
+    HAS_TRAY = False
+
 
 def _strip_ansi(texto):
     """Remove codigos ANSI de cores para exibicao na GUI."""
@@ -91,11 +98,13 @@ class JarvisApp(ctk.CTk):
         self._gemini_key = ""
         self._gemini_model = "gemini-3.6-flash"
         self._tema = {}
+        self._tray_icon = None
         self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
         self._load_config()
         self._aplicar_tema()
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.bind("<Unmap>", self._on_minimize)
         self.after(100, self._iniciar_reminders)
         self.log("Jarvis", "Aos seus servicos, Senhor. Como posso ajuda-lo?")
 
@@ -1057,9 +1066,64 @@ class JarvisApp(ctk.CTk):
         else:
             self._topmost_btn.configure(fg_color="#1a1a3a", text_color=TEXT, text="\U0001f512")
 
-    def _on_close(self):
-        """Salva config e fecha o Jarvis."""
+    def _create_tray_image(self):
+        if not HAS_TRAY:
+            return None
+        img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        accent = ACCENT.lstrip("#")
+        r, g, b = int(accent[0:2], 16), int(accent[2:4], 16), int(accent[4:6], 16)
+        draw.rounded_rectangle([4, 4, 60, 60], radius=12, fill=(r, g, b, 255))
+        draw.text((16, 10), "J", fill=(0, 0, 0, 255))
+        return img
+
+    def _start_tray(self):
+        if not HAS_TRAY or self._tray_icon:
+            return
+        image = self._create_tray_image()
+        if not image:
+            return
+        menu = pystray.Menu(
+            pystray.MenuItem("Abrir Jarvis", self._show_from_tray, default=True),
+            pystray.MenuItem("Sair", self._quit_from_tray),
+        )
+        self._tray_icon = pystray.Icon("Jarvis", image, "Jarvis Assistente", menu)
+        threading.Thread(target=self._tray_icon.run, daemon=True).start()
+
+    def _stop_tray(self):
+        if self._tray_icon:
+            try:
+                self._tray_icon.stop()
+            except Exception:
+                pass
+            self._tray_icon = None
+
+    def _show_from_tray(self, icon=None, item=None):
+        self.after(0, self._do_show_from_tray)
+
+    def _do_show_from_tray(self):
+        self.deiconify()
+        self.lift()
+        self.focus_force()
+        self._stop_tray()
+
+    def _quit_from_tray(self, icon=None, item=None):
+        self.after(0, self._do_quit_from_tray)
+
+    def _do_quit_from_tray(self):
+        self._stop_tray()
         self._save_config()
         if self.escuta_dinamica and self.escuta_dinamica.ativo:
             self.escuta_dinamica.parar()
         self.destroy()
+
+    def _on_minimize(self, event):
+        if event.state == "iconic":
+            self.after(100, self._start_tray)
+
+    def _on_close(self):
+        if HAS_TRAY:
+            self.withdraw()
+            self._start_tray()
+        else:
+            self._do_quit_from_tray()

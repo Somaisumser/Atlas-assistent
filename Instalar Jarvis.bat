@@ -108,8 +108,8 @@ if %errorlevel% neq 0 (
     pip install ddgs --quiet
     pip install pywin32 --quiet
     pip install screeninfo --quiet
-    pip install vosk --quiet
-    pip install sounddevice --quiet
+    pip install pystray --quiet
+    pip install Pillow --quiet
 )
 
 :: Verifica se o PyAudio foi instalado
