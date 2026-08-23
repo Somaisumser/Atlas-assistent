@@ -98,12 +98,11 @@ class JarvisApp(ctk.CTk):
         self._gemini_key = ""
         self._gemini_model = "gemini-3.6-flash"
         self._motor_voz = "google"
-        self._groq_key = ""
         self._tema = {}
         self._tray_icon = None
         self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
         self._load_config()
-        configurar_motor_voz(self._motor_voz, self._groq_key)
+        configurar_motor_voz(self._motor_voz)
         self._aplicar_tema()
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -186,18 +185,9 @@ class JarvisApp(ctk.CTk):
         box_motor.pack(fill="x", pady=(0, 8))
         ctk.CTkLabel(box_motor, text="Reconhecimento de Voz", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
         self._motor_var = ctk.StringVar(value=self._motor_voz)
-        for motor, label in [("google", "Google (Gratuito, online)"), ("groq", "Groq Whisper (Mais preciso, Gratuito)")]:
-            ctk.CTkRadioButton(box_motor, text=label, variable=self._motor_var, value=motor, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13), command=self._on_motor_change).pack(anchor="w", pady=3, padx=(20, 0))
-        ctk.CTkFrame(box_motor, fg_color="transparent", height=8).pack()
-
-        self._box_groq = ctk.CTkFrame(box_motor, fg_color="transparent")
-        self._box_groq.pack(fill="x")
-        ctk.CTkLabel(self._box_groq, text="Groq API Key", font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=(0, 4))
-        self._groq_key_entry = ctk.CTkEntry(self._box_groq, fg_color=PANEL, border_color="#1a1a3a", text_color=TEXT, placeholder_text="gsk_...", height=32, font=ctk.CTkFont(size=12), show="*")
-        self._groq_key_entry.pack(fill="x", padx=(20, 12), pady=(0, 2))
-        self._groq_key_entry.insert(0, self._groq_key)
-        ctk.CTkLabel(self._box_groq, text="Gratis: console.groq.com - whisper-large-v3-turbo", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(0, 8))
-        self._on_motor_change()
+        for motor, label in [("google", "Google (Online, mais rapido)"), ("whisper", "Whisper Local (Mais preciso, sem internet)")]:
+            ctk.CTkRadioButton(box_motor, text=label, variable=self._motor_var, value=motor, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13)).pack(anchor="w", pady=3, padx=(20, 0))
+        ctk.CTkLabel(box_motor, text="Whisper baixa o modelo na 1a vez (~75MB)", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(4, 10))
 
         box_vel = ctk.CTkFrame(scroll_voz, fg_color="#1a1a3a", corner_radius=8)
         box_vel.pack(fill="x", pady=(0, 8))
@@ -411,8 +401,7 @@ class JarvisApp(ctk.CTk):
             self._gemini_key = self._gemini_key_entry.get().strip()
             self._gemini_model = self._gemini_model_var.get()
             self._motor_voz = self._motor_var.get()
-            self._groq_key = self._groq_key_entry.get().strip()
-            configurar_motor_voz(self._motor_voz, self._groq_key)
+            configurar_motor_voz(self._motor_voz)
             self._atualizar_host_ollama()
             win.destroy()
         ctk.CTkButton(win, text="Salvar", fg_color=ACCENT_DIM, hover_color=ACCENT, text_color=BG, font=ctk.CTkFont(size=14, weight="bold"), height=40, corner_radius=10, command=salvar).pack(pady=(0, 15), padx=15, fill="x")
@@ -1002,12 +991,6 @@ class JarvisApp(ctk.CTk):
             return self._gemini_model
         return self.modelo_ollama
 
-    def _on_motor_change(self):
-        if self._motor_var.get() == "groq":
-            self._box_groq.pack(fill="x")
-        else:
-            self._box_groq.pack_forget()
-
     def _on_provider_change(self):
         """Mostra/esconde configs baseado no provider selecionado."""
         prov = self._provider_var.get()
@@ -1031,7 +1014,6 @@ class JarvisApp(ctk.CTk):
                 self._gemini_key = cfg.get("gemini_key", self._gemini_key)
                 self._gemini_model = cfg.get("gemini_model", self._gemini_model)
                 self._motor_voz = cfg.get("motor_voz", self._motor_voz)
-                self._groq_key = cfg.get("groq_key", self._groq_key)
                 self._tema = cfg.get("tema", {})
         except Exception:
             pass
@@ -1047,7 +1029,6 @@ class JarvisApp(ctk.CTk):
                 "gemini_key": self._gemini_key,
                 "gemini_model": self._gemini_model,
                 "motor_voz": self._motor_voz,
-                "groq_key": self._groq_key,
                 "tema": {
                     "accent": self._tema_cores["accent"].get(),
                     "bg": self._tema_cores["bg"].get(),

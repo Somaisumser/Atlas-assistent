@@ -8,7 +8,6 @@ import os
 import pygame
 import io
 import wave
-import requests
 
 _engine = None
 _lock = threading.Lock()
@@ -19,7 +18,7 @@ VELOCIDADE = 1.0
 _ouvindo = False
 _parar_fala = threading.Event()
 _motor_voz = "google"
-_groq_key = ""
+_whisper_model = None
 
 VOZES = {
     "Antonio": "pt-BR-AntonioNeural",
@@ -74,35 +73,50 @@ def _reconhecer_google(audio: sr.AudioData) -> str | None:
         return None
 
 
-def _reconhecer_groq(audio: sr.AudioData) -> str | None:
-    if not _groq_key:
+def _get_whisper_model():
+    global _whisper_model
+    if _whisper_model is None:
+        try:
+            from faster_whisper import WhisperModel
+            print("[Whisper] Carregando modelo tiny...")
+            _whisper_model = WhisperModel("tiny", device="cpu", compute_type="int8")
+            print("[Whisper] Modelo carregado.")
+        except Exception as e:
+            print(f"[Whisper] Erro ao carregar modelo: {e}")
+            return None
+    return _whisper_model
+
+
+def _reconhecer_whisper(audio: sr.AudioData) -> str | None:
+    model = _get_whisper_model()
+    if not model:
         return _reconhecer_google(audio)
     try:
         wav_data = _audio_para_wav(audio)
-        resp = requests.post(
-            "https://api.groq.com/openai/v1/audio/transcriptions",
-            headers={"Authorization": f"Bearer {_groq_key}"},
-            files={"file": ("audio.wav", wav_data, "audio/wav")},
-            data={"model": "whisper-large-v3-turbo", "language": "pt"},
-            timeout=15,
-        )
-        if resp.status_code == 200:
-            return resp.json().get("text", "").strip()
-        return _reconhecer_google(audio)
+        fd, tmp_path = tempfile.mkstemp(suffix=".wav")
+        os.close(fd)
+        with open(tmp_path, "wb") as f:
+            f.write(wav_data)
+        segments, info = model.transcribe(tmp_path, language="pt", beam_size=1)
+        texto = " ".join(seg.text.strip() for seg in segments)
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        return texto.strip() if texto.strip() else None
     except Exception:
         return _reconhecer_google(audio)
 
 
 def _reconhecer_audio(audio: sr.AudioData) -> str | None:
-    if _motor_voz == "groq":
-        return _reconhecer_groq(audio)
+    if _motor_voz == "whisper":
+        return _reconhecer_whisper(audio)
     return _reconhecer_google(audio)
 
 
-def configurar_motor_voz(motor: str, groq_key: str = ""):
-    global _motor_voz, _groq_key
+def configurar_motor_voz(motor: str):
+    global _motor_voz
     _motor_voz = motor
-    _groq_key = groq_key
 
 
 def listen(timeout=8, phrase_limit=15) -> str | None:
@@ -146,7 +160,7 @@ class EscutaDinamica:
 
     def _loop(self):
         global _ouvindo
-        motor_nome = "GROQ WHISPER" if _motor_voz == "groq" else "GOOGLE"
+        motor_nome = "WHISPER LOCAL" if _motor_voz == "whisper" else "GOOGLE"
         print(f"[Escuta Dinamica] Motor: {motor_nome}")
         print(f"[Escuta Dinamica] Pronta. Diga '{self.palavra_ativacao}'...")
 
