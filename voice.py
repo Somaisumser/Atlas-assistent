@@ -83,8 +83,11 @@ def _reconhecer_gemini(audio: sr.AudioData) -> str | None:
         wav_data = _audio_para_wav(audio)
         audio_b64 = base64.b64encode(wav_data).decode("utf-8")
         texto = transcrever_audio(audio_b64, _gemini_key, _gemini_model)
-        return texto if texto else _reconhecer_google(audio)
-    except Exception:
+        if texto and texto.strip():
+            return texto.strip()
+        return _reconhecer_google(audio)
+    except Exception as e:
+        print(f"[Gemini] Erro na transcricao: {e}")
         return _reconhecer_google(audio)
 
 
@@ -185,12 +188,15 @@ class EscutaDinamica:
                                     print("[Escuta Dinamica] Nao entendi o comando.")
                             _ouvindo = False
                             print("[Escuta Dinamica] Aguardando...")
+                            import time as _time
+                            _time.sleep(0.3)
 
                         except sr.WaitTimeoutError:
                             continue
                         except Exception as e:
                             print(f"[Escuta Dinamica] Erro no loop: {e}")
-                            time.sleep(0.1)
+                            import time as _time
+                            _time.sleep(0.5)
             except Exception as e:
                 print(f"[Escuta Dinamica] Erro ao abrir microfone: {e}")
                 time.sleep(1)
