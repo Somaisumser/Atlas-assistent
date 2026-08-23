@@ -199,6 +199,7 @@ def open_program(nome: str, monitor: int = None) -> str:
         "notepad": "Bloco de Notas",
         "explorer": "Explorador de Arquivos",
         "opera": "Opera",
+        "whatsapp": "WhatsApp",
     }
 
     # Programas que estao no PATH do Windows (start resolve direto)
@@ -250,6 +251,11 @@ def open_program(nome: str, monitor: int = None) -> str:
             "~/AppData/Local/Programs/Opera/launcher.exe",
             "C:/Program Files/Opera/launcher.exe",
             "C:/Program Files (x86)/Opera/launcher.exe",
+        ],
+        "whatsapp": [
+            "~/AppData/Local/WhatsApp/WhatsApp.exe",
+            "C:/Program Files/WhatsApp/WhatsApp.exe",
+            "C:/Program Files (x86)/WhatsApp/WhatsApp.exe",
         ],
     }
 
