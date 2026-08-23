@@ -1,5 +1,6 @@
 import requests
 import json
+import base64
 
 HOST = "http://localhost:11434"
 MODEL = "llama3.2"
@@ -111,3 +112,31 @@ def listar_modelos_ollama() -> list:
         return [m["name"] for m in resp.json().get("models", [])]
     except Exception:
         return []
+
+
+def transcrever_audio(audio_b64: str, api_key: str, modelo: str = None) -> str | None:
+    """Transcreve audio usando Gemini multimodal. Retorna texto ou None."""
+    if not api_key:
+        return None
+    try:
+        url = f"{GEMINI_API_URL}/{modelo or GEMINI_MODELS[0]}:generateContent"
+        resp = _session.post(
+            url,
+            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+            json={
+                "contents": [{
+                    "parts": [
+                        {"text": "Transcreva exatamente o que esta sendo falado neste audio. Responda APENAS com o texto transcrito, sem aspas, sem explicacoes, sem pontuacao extra. Se nao houver fala, responda com vazio."},
+                        {"inline_data": {"mime_type": "audio/wav", "data": audio_b64}},
+                    ]
+                }],
+                "generationConfig": {"temperature": 0.1, "maxOutputTokens": 256},
+            },
+            timeout=15,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        texto = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return texto if texto else None
+    except Exception:
+        return None

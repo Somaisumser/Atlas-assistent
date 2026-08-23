@@ -8,6 +8,7 @@ import os
 import pygame
 import io
 import wave
+import base64
 
 _engine = None
 _lock = threading.Lock()
@@ -18,7 +19,8 @@ VELOCIDADE = 1.0
 _ouvindo = False
 _parar_fala = threading.Event()
 _motor_voz = "google"
-_whisper_model = None
+_gemini_key = ""
+_gemini_model = ""
 
 VOZES = {
     "Antonio": "pt-BR-AntonioNeural",
@@ -73,50 +75,30 @@ def _reconhecer_google(audio: sr.AudioData) -> str | None:
         return None
 
 
-def _get_whisper_model():
-    global _whisper_model
-    if _whisper_model is None:
-        try:
-            from faster_whisper import WhisperModel
-            print("[Whisper] Carregando modelo base...")
-            _whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
-            print("[Whisper] Modelo carregado.")
-        except Exception as e:
-            print(f"[Whisper] Erro ao carregar modelo: {e}")
-            return None
-    return _whisper_model
-
-
-def _reconhecer_whisper(audio: sr.AudioData) -> str | None:
-    model = _get_whisper_model()
-    if not model:
+def _reconhecer_gemini(audio: sr.AudioData) -> str | None:
+    if not _gemini_key:
         return _reconhecer_google(audio)
     try:
+        from brain import transcrever_audio
         wav_data = _audio_para_wav(audio)
-        fd, tmp_path = tempfile.mkstemp(suffix=".wav")
-        os.close(fd)
-        with open(tmp_path, "wb") as f:
-            f.write(wav_data)
-        segments, info = model.transcribe(tmp_path, language="pt", beam_size=1, initial_prompt="Jarvis, abra o Chrome, feche o programa, qual a temperatura")
-        texto = " ".join(seg.text.strip() for seg in segments)
-        try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
-        return texto.strip() if texto.strip() else None
+        audio_b64 = base64.b64encode(wav_data).decode("utf-8")
+        texto = transcrever_audio(audio_b64, _gemini_key, _gemini_model)
+        return texto if texto else _reconhecer_google(audio)
     except Exception:
         return _reconhecer_google(audio)
 
 
 def _reconhecer_audio(audio: sr.AudioData) -> str | None:
-    if _motor_voz == "whisper":
-        return _reconhecer_whisper(audio)
+    if _motor_voz == "gemini":
+        return _reconhecer_gemini(audio)
     return _reconhecer_google(audio)
 
 
-def configurar_motor_voz(motor: str):
-    global _motor_voz
+def configurar_motor_voz(motor: str, gemini_key: str = "", gemini_model: str = ""):
+    global _motor_voz, _gemini_key, _gemini_model
     _motor_voz = motor
+    _gemini_key = gemini_key
+    _gemini_model = gemini_model
 
 
 def listen(timeout=8, phrase_limit=15) -> str | None:
@@ -160,7 +142,7 @@ class EscutaDinamica:
 
     def _loop(self):
         global _ouvindo
-        motor_nome = "WHISPER LOCAL" if _motor_voz == "whisper" else "GOOGLE"
+        motor_nome = "GEMINI" if _motor_voz == "gemini" else "GOOGLE"
         print(f"[Escuta Dinamica] Motor: {motor_nome}")
         print(f"[Escuta Dinamica] Pronta. Diga '{self.palavra_ativacao}'...")
 

@@ -102,7 +102,7 @@ class JarvisApp(ctk.CTk):
         self._tray_icon = None
         self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
         self._load_config()
-        configurar_motor_voz(self._motor_voz)
+        configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model)
         self._aplicar_tema()
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -185,9 +185,9 @@ class JarvisApp(ctk.CTk):
         box_motor.pack(fill="x", pady=(0, 8))
         ctk.CTkLabel(box_motor, text="Reconhecimento de Voz", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
         self._motor_var = ctk.StringVar(value=self._motor_voz)
-        for motor, label in [("google", "Google (Online, mais rapido)"), ("whisper", "Whisper Local (Mais preciso, sem internet)")]:
+        for motor, label in [("google", "Google (Online, mais rapido)"), ("gemini", "Gemini (Mais preciso, usa sua API key)")]:
             ctk.CTkRadioButton(box_motor, text=label, variable=self._motor_var, value=motor, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13)).pack(anchor="w", pady=3, padx=(20, 0))
-        ctk.CTkLabel(box_motor, text="Whisper baixa o modelo na 1a vez (~150MB)", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(4, 10))
+        ctk.CTkLabel(box_motor, text="Gemini usa a mesma API key do cerebro", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(4, 10))
 
         box_vel = ctk.CTkFrame(scroll_voz, fg_color="#1a1a3a", corner_radius=8)
         box_vel.pack(fill="x", pady=(0, 8))
@@ -401,7 +401,7 @@ class JarvisApp(ctk.CTk):
             self._gemini_key = self._gemini_key_entry.get().strip()
             self._gemini_model = self._gemini_model_var.get()
             self._motor_voz = self._motor_var.get()
-            configurar_motor_voz(self._motor_voz)
+            configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model)
             self._atualizar_host_ollama()
             win.destroy()
         ctk.CTkButton(win, text="Salvar", fg_color=ACCENT_DIM, hover_color=ACCENT, text_color=BG, font=ctk.CTkFont(size=14, weight="bold"), height=40, corner_radius=10, command=salvar).pack(pady=(0, 15), padx=15, fill="x")
