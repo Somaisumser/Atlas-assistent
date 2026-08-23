@@ -6,6 +6,7 @@ import random
 import time
 import win32gui
 import win32con
+import glob as _glob
 
 SYSTEM = platform.system()
 
@@ -137,6 +138,82 @@ def _tentar_caminhos(caminhos, nome_exibicao):
     return None
 
 
+def _procurar_jogo_steam(nome: str) -> str | None:
+    """Procura um jogo na pasta do Steam e retorna o caminho do executavel."""
+    user = os.path.expanduser("~")
+    steam_paths = [
+        "C:/Program Files (x86)/Steam/steamapps/common",
+        "C:/Program Files/Steam/steamapps/common",
+        f"{user}/Steam/steamapps/common",
+        f"{user}/AppData/Local/Steam/steamapps/common",
+    ]
+    # Verifica bibliotecas adicionais do Steam
+    libraryfolders = [
+        "C:/Program Files (x86)/Steam/steamapps/libraryfolders.vdf",
+    ]
+    for vf in libraryfolders:
+        try:
+            if os.path.isfile(vf):
+                with open(vf, "r", encoding="utf-8", errors="ignore") as f:
+                    for linha in f:
+                        if '"path"' in linha:
+                            import re as _re
+                            m = _re.search(r'"path"\s+"([^"]+)"', linha)
+                            if m:
+                                caminho = m.group(1).replace("\\\\", "/").replace("\\", "/")
+                                path_common = os.path.join(caminho, "steamapps/common").replace("\\", "/")
+                                if path_common not in steam_paths:
+                                    steam_paths.append(path_common)
+        except Exception:
+            continue
+
+    # Extensoes de executaveis do Windows
+    extensoes = (".exe",)
+
+    for base_path in steam_paths:
+        if not os.path.isdir(base_path):
+            continue
+        try:
+            for pasta_jogo in os.listdir(base_path):
+                if not os.path.isdir(os.path.join(base_path, pasta_jogo)):
+                    continue
+                nome_pasta = pasta_jogo.lower().replace(" ", "").replace("-", "").replace("_", "")
+                nome_busca = nome.replace(" ", "").replace("-", "").replace("_", "")
+                if nome_busca in nome_pasta or nome_pasta in nome_busca or nome_pasta.startswith(nome_busca[:4]):
+                    pasta_completa = os.path.join(base_path, pasta_jogo)
+                    # 1) Procura .exe na raiz da pasta do jogo
+                    for arquivo in os.listdir(pasta_completa):
+                        if arquivo.lower().endswith(extensoes):
+                            caminho_exe = os.path.join(pasta_completa, arquivo)
+                            nome_exe = arquivo.lower().replace(".exe", "").replace(" ", "").replace("-", "")
+                            if nome_busca in nome_exe or nome_exe.startswith(nome_busca[:4]):
+                                return caminho_exe
+                    # 2) Pega primeiro .exe da raiz
+                    for arquivo in os.listdir(pasta_completa):
+                        if arquivo.lower().endswith(extensoes):
+                            return os.path.join(pasta_completa, arquivo)
+                    # 3) Busca em subpastas (1 nivel)
+                    for sub in os.listdir(pasta_completa):
+                        sub_path = os.path.join(pasta_completa, sub)
+                        if os.path.isdir(sub_path):
+                            for arquivo in os.listdir(sub_path):
+                                if arquivo.lower().endswith(extensoes):
+                                    caminho_exe = os.path.join(sub_path, arquivo)
+                                    nome_exe = arquivo.lower().replace(".exe", "").replace(" ", "").replace("-", "")
+                                    if nome_busca in nome_exe or nome_exe.startswith(nome_busca[:4]):
+                                        return caminho_exe
+                    # 4) Qualquer .exe em subpastas
+                    for sub in os.listdir(pasta_completa):
+                        sub_path = os.path.join(pasta_completa, sub)
+                        if os.path.isdir(sub_path):
+                            for arquivo in os.listdir(sub_path):
+                                if arquivo.lower().endswith(extensoes):
+                                    return os.path.join(sub_path, arquivo)
+        except Exception:
+            continue
+    return None
+
+
 def open_program(nome: str, monitor: int = None) -> str:
     """Abre um programa pelo nome, opcionalmente em um monitor especifico."""
     nome = nome.lower().strip()
@@ -181,6 +258,11 @@ def open_program(nome: str, monitor: int = None) -> str:
                 return random.choice(_ABRIR_VARIAÇÕES).format(nome=nome)
             except Exception as e:
                 return f"Peço desculpas Senhor, mas nao consegui abrir a pasta {nome}. Erro: {e}"
+
+    # Procura jogos na pasta do Steam
+    resultado_steam = _procurar_jogo_steam(nome)
+    if resultado_steam:
+        return _abrir_e_mover(resultado_steam)
 
     # Mapeamento de nomes para janelas (titulo da janela)
     nomes_janela = {
