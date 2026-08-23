@@ -3,6 +3,7 @@ from tkinter import colorchooser
 import threading
 import re
 import os
+import sys
 import requests
 import json
 
@@ -107,6 +108,9 @@ class JarvisApp(ctk.CTk):
         ctk.CTkLabel(title_box, text="assistente pessoal", font=ctk.CTkFont(size=12), text_color=MUTED).pack(anchor="w")
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.pack(side="right", padx=5, pady=10)
+        self._topmost = False
+        self._topmost_btn = ctk.CTkButton(btn_frame, text="\U0001f512", width=38, height=34, corner_radius=10, fg_color="#1a1a3a", hover_color=ACCENT_DIM, text_color=TEXT, font=ctk.CTkFont(size=16), command=self._toggle_topmost)
+        self._topmost_btn.pack(side="right", padx=(4, 0))
         ctk.CTkButton(btn_frame, text="?", width=38, height=34, corner_radius=10, fg_color="#1a1a3a", hover_color=ACCENT_DIM, text_color=TEXT, font=ctk.CTkFont(size=16, weight="bold"), command=self._open_help).pack(side="right", padx=(4, 0))
         ctk.CTkButton(btn_frame, text="\u2699", width=38, height=34, corner_radius=10, fg_color="#1a1a3a", hover_color=ACCENT_DIM, text_color=TEXT, font=ctk.CTkFont(size=16), command=self._open_settings).pack(side="right")
 
@@ -1044,6 +1048,14 @@ class JarvisApp(ctk.CTk):
         g = min(255, int(g * fator))
         b = min(255, int(b * fator))
         return f"#{r:02x}{g:02x}{b:02x}"
+
+    def _toggle_topmost(self):
+        self._topmost = not self._topmost
+        self.attributes("-topmost", self._topmost)
+        if self._topmost:
+            self._topmost_btn.configure(fg_color=ACCENT_DIM, text_color=BG, text="\U0001f513")
+        else:
+            self._topmost_btn.configure(fg_color="#1a1a3a", text_color=TEXT, text="\U0001f512")
 
     def _on_close(self):
         """Salva config e fecha o Jarvis."""
