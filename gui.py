@@ -187,7 +187,7 @@ class JarvisApp(ctk.CTk):
         self._motor_var = ctk.StringVar(value=self._motor_voz)
         for motor, label in [("google", "Google (Online, mais rapido)"), ("whisper", "Whisper Local (Mais preciso, sem internet)")]:
             ctk.CTkRadioButton(box_motor, text=label, variable=self._motor_var, value=motor, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13)).pack(anchor="w", pady=3, padx=(20, 0))
-        ctk.CTkLabel(box_motor, text="Whisper baixa o modelo na 1a vez (~75MB)", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(4, 10))
+        ctk.CTkLabel(box_motor, text="Whisper baixa o modelo na 1a vez (~150MB)", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(4, 10))
 
         box_vel = ctk.CTkFrame(scroll_voz, fg_color="#1a1a3a", corner_radius=8)
         box_vel.pack(fill="x", pady=(0, 8))

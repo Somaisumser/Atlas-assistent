@@ -78,8 +78,8 @@ def _get_whisper_model():
     if _whisper_model is None:
         try:
             from faster_whisper import WhisperModel
-            print("[Whisper] Carregando modelo tiny...")
-            _whisper_model = WhisperModel("tiny", device="cpu", compute_type="int8")
+            print("[Whisper] Carregando modelo base...")
+            _whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
             print("[Whisper] Modelo carregado.")
         except Exception as e:
             print(f"[Whisper] Erro ao carregar modelo: {e}")
@@ -97,7 +97,7 @@ def _reconhecer_whisper(audio: sr.AudioData) -> str | None:
         os.close(fd)
         with open(tmp_path, "wb") as f:
             f.write(wav_data)
-        segments, info = model.transcribe(tmp_path, language="pt", beam_size=1)
+        segments, info = model.transcribe(tmp_path, language="pt", beam_size=1, initial_prompt="Jarvis, abra o Chrome, feche o programa, qual a temperatura")
         texto = " ".join(seg.text.strip() for seg in segments)
         try:
             os.remove(tmp_path)
