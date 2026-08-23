@@ -943,13 +943,16 @@ class JarvisApp(ctk.CTk):
 
     def _atualizar_modelos(self):
         """Busca modelos instalados no Ollama e atualiza o dropdown."""
+        combo = self._model_combo
+        info_label = self._model_info_label
         def buscar():
             modelos = obter_modelos_ollama()
             self._modelos_info = {m["display"]: m for m in modelos}
             displays = [m["display"] for m in modelos] or ["Nenhum modelo encontrado"]
             try:
-                self.after(0, lambda: self._model_combo.configure(values=displays))
-                if modelos:
+                if combo.winfo_exists():
+                    self.after(0, lambda: combo.configure(values=displays))
+                if modelos and combo.winfo_exists():
                     self.after(0, lambda: self._model_var.set(modelos[0]["display"]))
                     self.after(0, lambda: self._atualizar_info_modelo(modelos[0]["display"]))
             except Exception:
@@ -958,6 +961,11 @@ class JarvisApp(ctk.CTk):
 
     def _atualizar_info_modelo(self, display):
         """Atualiza label com info do modelo selecionado."""
+        try:
+            if not self._model_info_label.winfo_exists():
+                return
+        except Exception:
+            return
         info = self._modelos_info.get(display, {})
         if info:
             texto = (f"Modelo: {info['nome']}\n"
