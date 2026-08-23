@@ -5,10 +5,47 @@ from pathlib import Path
 
 HOME = Path.home()
 
+# Atalhos para pastas comuns do Windows
+PASTAS_COMUNS = {
+    "downloads": HOME / "Downloads",
+    "download": HOME / "Downloads",
+    "documentos": HOME / "Documents",
+    "documento": HOME / "Documents",
+    "area de trabalho": HOME / "Desktop",
+    "desktop": HOME / "Desktop",
+    "imagens": HOME / "Pictures",
+    "imagem": HOME / "Pictures",
+    "videos": HOME / "Videos",
+    "video": HOME / "Videos",
+    "musicas": HOME / "Music",
+    "musica": HOME / "Music",
+    "music": HOME / "Music",
+    "pasta inicial": HOME,
+    "home": HOME,
+    "perfil": HOME,
+    "appdata": HOME / "AppData",
+    "appdata local": HOME / "AppData" / "Local",
+    "appdata roaming": HOME / "AppData" / "Roaming",
+    "onedrive": HOME / "OneDrive",
+    "meus documentos": HOME / "Documents",
+    "minhas imagens": HOME / "Pictures",
+    "meus videos": HOME / "Videos",
+    "minhas musicas": HOME / "Music",
+}
+
+
+def _resolver_caminho(caminho: str) -> str:
+    """Resolve atalhos de pastas comuns para caminhos reais."""
+    caminho_lower = caminho.lower().strip()
+    if caminho_lower in PASTAS_COMUNS:
+        return str(PASTAS_COMUNS[caminho_lower])
+    return caminho
+
 
 def list_dir(caminho: str = ".") -> str:
     """Lista arquivos e pastas de um diretorio."""
     try:
+        caminho = _resolver_caminho(caminho)
         itens = list(Path(caminho).iterdir())
         if not itens:
             return "A pasta se encontra vazia, Senhor."
@@ -49,6 +86,7 @@ def create_file(caminho: str, conteudo: str = "") -> str:
 def read_file(caminho: str) -> str:
     """Le o conteudo de um arquivo."""
     try:
+        caminho = _resolver_caminho(caminho)
         conteudo = Path(caminho).read_text(encoding="utf-8")
         if len(conteudo) > 2000:
             return conteudo[:2000] + "\n... (truncado)"
@@ -60,6 +98,7 @@ def read_file(caminho: str) -> str:
 def delete_file(caminho: str) -> str:
     """Deleta um arquivo ou pasta."""
     try:
+        caminho = _resolver_caminho(caminho)
         alvo = Path(caminho)
         if alvo.is_dir():
             shutil.rmtree(alvo)

@@ -141,6 +141,47 @@ def open_program(nome: str, monitor: int = None) -> str:
     """Abre um programa pelo nome, opcionalmente em um monitor especifico."""
     nome = nome.lower().strip()
 
+    # Pastas comuns do Windows (atalhos)
+    user = os.path.expanduser("~")
+    pastas_comuns = {
+        "downloads": os.path.join(user, "Downloads"),
+        "download": os.path.join(user, "Downloads"),
+        "documentos": os.path.join(user, "Documents"),
+        "documento": os.path.join(user, "Documents"),
+        "documentos recentes": os.path.join(user, "Documents"),
+        "area de trabalho": os.path.join(user, "Desktop"),
+        "desktop": os.path.join(user, "Desktop"),
+        "imagens": os.path.join(user, "Pictures"),
+        "imagem": os.path.join(user, "Pictures"),
+        "videos": os.path.join(user, "Videos"),
+        "video": os.path.join(user, "Videos"),
+        "musicas": os.path.join(user, "Music"),
+        "musica": os.path.join(user, "Music"),
+        "music": os.path.join(user, "Music"),
+        "pasta inicial": user,
+        "home": user,
+        "perfil": user,
+        "appdata": os.path.join(user, "AppData"),
+        "appdata local": os.path.join(user, "AppData", "Local"),
+        "appdata roaming": os.path.join(user, "AppData", "Roaming"),
+        " OneDrive": os.path.join(user, "OneDrive"),
+        "onedrive": os.path.join(user, "OneDrive"),
+        "documentos do usuario": user,
+        "meus documentos": os.path.join(user, "Documents"),
+        "minhas imagens": os.path.join(user, "Pictures"),
+        "meus videos": os.path.join(user, "Videos"),
+        "minhas musicas": os.path.join(user, "Music"),
+    }
+
+    if nome in pastas_comuns:
+        caminho = pastas_comuns[nome]
+        if os.path.isdir(caminho):
+            try:
+                subprocess.Popen(f'start "" "{caminho}"', shell=True)
+                return random.choice(_ABRIR_VARIAÇÕES).format(nome=nome)
+            except Exception as e:
+                return f"Peço desculpas Senhor, mas nao consegui abrir a pasta {nome}. Erro: {e}"
+
     # Mapeamento de nomes para janelas (titulo da janela)
     nomes_janela = {
         "discord": "Discord",
