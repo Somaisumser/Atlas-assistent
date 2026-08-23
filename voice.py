@@ -46,13 +46,13 @@ def _calibrar_mic():
         return
     try:
         with sr.Microphone(sample_rate=16000) as source:
-            _recognizer.adjust_for_ambient_noise(source, duration=0.5)
+            _recognizer.adjust_for_ambient_noise(source, duration=1.5)
         _mic_calibrada = True
     except Exception:
         pass
 
 
-def listen(timeout=5, phrase_limit=10) -> str | None:
+def listen(timeout=8, phrase_limit=15) -> str | None:
     _calibrar_mic()
     try:
         with sr.Microphone(sample_rate=16000) as source:
@@ -73,8 +73,9 @@ class EscutaDinamica:
         self._reconhecedor = sr.Recognizer()
         self._reconhecedor.energy_threshold = 300
         self._reconhecedor.dynamic_energy_threshold = True
-        self._reconhecedor.pause_threshold = 0.8
+        self._reconhecedor.pause_threshold = 1.2
         self._reconhecedor.phrase_threshold = 0.3
+        self._reconhecedor.non_speaking_duration = 0.8
 
     def iniciar(self):
         if self.ativo:
@@ -100,12 +101,12 @@ class EscutaDinamica:
         while self.ativo:
             try:
                 with sr.Microphone(sample_rate=16000) as source:
-                    self._reconhecedor.adjust_for_ambient_noise(source, duration=0.5)
+                    self._reconhecedor.adjust_for_ambient_noise(source, duration=1.0)
                     print(f"[Escuta Dinamica] Noise calibrado. Aguardando...")
 
                     while self.ativo:
                         try:
-                            audio = self._reconhecedor.listen(source, timeout=1.5, phrase_time_limit=10)
+                            audio = self._reconhecedor.listen(source, timeout=2.0, phrase_time_limit=15)
 
                             texto = self._reconhecer(audio)
                             if texto:
@@ -125,7 +126,7 @@ class EscutaDinamica:
                             else:
                                 print("[Escuta Dinamica] Diga seu comando...")
                                 try:
-                                    audio2 = self._reconhecedor.listen(source, timeout=4, phrase_time_limit=10)
+                                    audio2 = self._reconhecedor.listen(source, timeout=6, phrase_time_limit=15)
                                     texto2 = self._reconhecer(audio2)
                                     if texto2:
                                         print(f"[Escuta Dinamica] Comando: {texto2}")
