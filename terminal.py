@@ -113,7 +113,7 @@ def processar(texto):
     text_low = texto.lower().strip()
 
     # Abrir pasta
-    m = re.match(r"(?:abra|abrir|abre|abra a|abrir a|abra o|abrir o)\s+(?:pasta|diretorio|diretorio)\s+(.+)", text_low)
+    m = re.match(r"(?:abra|abrir|abre)\s+(?:a\s+)?(?:pasta|diretorio)\s+(.+)", text_low)
     if m:
         return open_folder(m.group(1).strip())
 

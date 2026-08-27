@@ -834,7 +834,7 @@ class JarvisApp(ctk.CTk):
 
     def _check_system_commands(self, text):
         # Abrir pasta
-        m = re.match(r"(?:abra|abrir|abre|abra a|abrir a|abra o|abrir o)\s+(?:pasta|diretorio|diretorio)\s+(.+)", text)
+        m = re.match(r"(?:abra|abrir|abre)\s+(?:a\s+)?(?:pasta|diretorio)\s+(.+)", text)
         if m:
             return open_folder(m.group(1).strip())
 
