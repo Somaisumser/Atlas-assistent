@@ -48,7 +48,7 @@ GEMINI_MODELS = [
     "gemini-3.6-flash",
     "gemini-3.5-flash",
     "gemini-3.5-flash-lite",
-    "gemini-3.7-flash",
+    "gemini-2.5-flash",
 ]
 
 
@@ -184,38 +184,43 @@ def ver_tela(api_key: str, modelo: str = None) -> str:
 
 
 def criar_imagem(descricao: str, api_key: str, modelo: str = None, destino: str = None) -> str:
-    """Gera uma imagem usando o Gemini Imagen. Retorna o caminho do arquivo."""
+    """Gera uma imagem usando o Gemini (Nano Banana). Retorna o caminho do arquivo."""
     if not api_key:
         return "Preciso de uma API key do Gemini para criar imagens, Senhor."
     try:
         from pathlib import Path
+        import base64 as _b64
         
-        # Modelo de imagem
-        modelo_img = "imagen-3.0-generate-002"
+        # Modelo de imagem disponivel na conta (Nano Banana)
+        modelo_img = "gemini-3.1-flash-image"
         
         if destino is None:
             destino = str(Path.home() / "Desktop" / "imagem_gerada.png")
         
-        url = f"{GEMINI_API_URL}/{modelo_img}:predict"
+        url = f"{GEMINI_API_URL}/{modelo_img}:generateContent"
         resp = _session.post(
             url,
             headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
             json={
-                "instances": [{"prompt": descricao}],
-                "parameters": {
-                    "sampleCount": 1,
-                    "aspectRatio": "1:1",
-                    "personGeneration": "allow_all",
-                },
+                "contents": [{
+                    "parts": [{"text": f"Crie uma imagem de: {descricao}"}]
+                }],
+                "generationConfig": {"temperature": 1.0, "maxOutputTokens": 8192},
             },
-            timeout=60,
+            timeout=90,
         )
         resp.raise_for_status()
         data = resp.json()
         
-        b64 = data["predictions"][0]["bytesBase64Encoded"]
-        import base64 as _b64
-        img_bytes = _b64.b64decode(b64)
+        # O Gemini retorna a imagem como base64 no campo inlineData
+        img_bytes = None
+        for part in data["candidates"][0]["content"]["parts"]:
+            if "inlineData" in part:
+                img_bytes = _b64.b64decode(part["inlineData"]["data"])
+                break
+        
+        if img_bytes is None:
+            return "Peço desculpas Senhor, mas o Gemini nao retornou uma imagem. Tente novamente."
         
         Path(destino).write_bytes(img_bytes)
         return f"Imagem gerada com sucesso, Senhor. Salvei em: {destino}"
