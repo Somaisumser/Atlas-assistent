@@ -140,3 +140,43 @@ def transcrever_audio(audio_b64: str, api_key: str, modelo: str = None) -> str |
         return texto if texto else None
     except Exception:
         return None
+
+
+def ver_tela(api_key: str, modelo: str = None) -> str:
+    """Tira um screenshot e descreve o que ve usando Gemini vision."""
+    if not api_key:
+        return "Preciso de uma API key do Gemini para ver a tela, Senhor."
+    try:
+        import pyautogui
+        from io import BytesIO
+        
+        # Tira screenshot
+        screenshot = pyautogui.screenshot()
+        buffer = BytesIO()
+        screenshot.save(buffer, format="PNG")
+        img_b64 = base64.b64encode(buffer.getvalue()).decode()
+        
+        # Envia pra Gemini com visao
+        url = f"{GEMINI_API_URL}/{modelo or GEMINI_MODELS[0]}:generateContent"
+        resp = _session.post(
+            url,
+            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+            json={
+                "contents": [{
+                    "parts": [
+                        {"text": "Descreva o que voce ve nesta tela de computador em 2-3 frases curtas. Apenas liste os programas e websites visiveis, sem formatacao markdown, sem asteriscos, sem negrito. Responda em portugues."},
+                        {"inline_data": {"mime_type": "image/png", "data": img_b64}},
+                    ]
+                }],
+                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 256},
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        texto = data["candidates"][0]["content"]["parts"][0]["text"]
+        # Remove formatacao markdown
+        texto = texto.replace("**", "").replace("*", "").replace("#", "").strip()
+        return texto
+    except Exception as e:
+        return f"Peço desculpas Senhor, mas nao consegui ver a tela: {e}"

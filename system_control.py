@@ -551,6 +551,92 @@ def _coletar_dados_pc():
     }
 
 
+def open_folder(caminho: str) -> str:
+    """Abre uma pasta pelo caminho."""
+    from file_manager import _resolver_caminho, PASTAS_COMUNS
+    
+    # Tenta resolver o caminho diretamente
+    caminho_resolvido = _resolver_caminho(caminho)
+    if os.path.isdir(caminho_resolvido):
+        try:
+            subprocess.Popen(f'start "" "{caminho_resolvido}"', shell=True)
+            nome_pasta = os.path.basename(caminho_resolvido) or caminho_resolvido
+            return f"Abrindo a pasta {nome_pasta}, Senhor."
+        except Exception as e:
+            return f"Peço desculpas Senhor, mas nao consegui abrir a pasta: {e}"
+    
+    # Se nao encontrou, procura em locais comuns
+    user = os.path.expanduser("~")
+    locais_comuns = [
+        os.path.join(user, "Desktop"),
+        os.path.join(user, "Documents"),
+        os.path.join(user, "Downloads"),
+        os.path.join(user, "Pictures"),
+        os.path.join(user, "Videos"),
+        os.path.join(user, "Music"),
+    ]
+    
+    for local in locais_comuns:
+        pasta_teste = os.path.join(local, caminho)
+        if os.path.isdir(pasta_teste):
+            try:
+                subprocess.Popen(f'start "" "{pasta_teste}"', shell=True)
+                return f"Abrindo a pasta {caminho}, Senhor."
+            except Exception as e:
+                return f"Peço desculpas Senhor, mas nao consegui abrir a pasta: {e}"
+    
+    # Ultima tentativa: procura em todo o sistema
+    try:
+        for root, dirs, files in os.walk(user):
+            if caminho.lower() in [d.lower() for d in dirs]:
+                pasta_encontrada = os.path.join(root, caminho)
+                try:
+                    subprocess.Popen(f'start "" "{pasta_encontrada}"', shell=True)
+                    return f"Abrindo a pasta {caminho}, Senhor."
+                except Exception as e:
+                    return f"Peço desculpas Senhor, mas nao consegui abrir a pasta: {e}"
+            # Limita a busca para nao demorar muito
+            if root.count(os.sep) - user.count(os.sep) > 3:
+                break
+    except Exception:
+        pass
+    
+    return f"Peço desculpas Senhor, mas nao encontrei a pasta: {caminho}"
+
+
+def open_file(caminho: str) -> str:
+    """Abre um arquivo pelo caminho."""
+    # Tenta resolver o caminho diretamente
+    caminho_resolvido = os.path.expanduser(caminho)
+    if os.path.isfile(caminho_resolvido):
+        try:
+            subprocess.Popen(f'start "" "{caminho_resolvido}"', shell=True)
+            return f"Abrindo o arquivo, Senhor: {os.path.basename(caminho_resolvido)}"
+        except Exception as e:
+            return f"Peço desculpas Senhor, mas nao consegui abrir o arquivo: {e}"
+    
+    # Se nao encontrou, procura em locais comuns
+    user = os.path.expanduser("~")
+    locais_comuns = [
+        os.path.join(user, "Desktop"),
+        os.path.join(user, "Documents"),
+        os.path.join(user, "Downloads"),
+        os.path.join(user, "Pictures"),
+        os.path.join(user, "Videos"),
+    ]
+    
+    for local in locais_comuns:
+        arquivo_teste = os.path.join(local, caminho)
+        if os.path.isfile(arquivo_teste):
+            try:
+                subprocess.Popen(f'start "" "{arquivo_teste}"', shell=True)
+                return f"Abrindo o arquivo, Senhor: {os.path.basename(arquivo_teste)}"
+            except Exception as e:
+                return f"Peço desculpas Senhor, mas nao consegui abrir o arquivo: {e}"
+    
+    return f"Peço desculpas Senhor, mas nao encontrei o arquivo: {caminho}"
+
+
 def desligar_computador() -> str:
     """Desliga o computador."""
     subprocess.run(["shutdown", "/s", "/t", "10"], creationflags=subprocess.CREATE_NO_WINDOW)

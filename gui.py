@@ -19,9 +19,9 @@ def _strip_ansi(texto):
     """Remove codigos ANSI de cores para exibicao na GUI."""
     return re.sub(r'\033\[[0-9;]*m', '', texto)
 
-from brain import chat, GEMINI_MODELS
+from brain import chat, ver_tela, GEMINI_MODELS
 from voice import listen, speak, stop_speak, VOZES, EscutaDinamica, configurar_motor_voz
-from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala, desligar_computador, reiniciar_computador, suspender_computador
+from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala, desligar_computador, reiniciar_computador, suspender_computador, open_folder, open_file
 from file_manager import list_dir, read_file, create_file, delete_file
 from web_search import search
 from code_runner import run_code
@@ -833,6 +833,50 @@ class JarvisApp(ctk.CTk):
         return None
 
     def _check_system_commands(self, text):
+        # Abrir pasta
+        m = re.match(r"(?:abra|abrir|abre|abra a|abrir a|abra o|abrir o)\s+(?:pasta|diretorio|diretorio)\s+(.+)", text)
+        if m:
+            return open_folder(m.group(1).strip())
+
+        # Abrir arquivo por caminho
+        m = re.match(r"(?:abra|abrir|abre)\s+(?:o\s+)?arquivo\s+(.+)", text)
+        if m:
+            return open_file(m.group(1).strip())
+
+        # Ver tela
+        if re.search(r"(?:veja|ver|olhe|olha|mostra|mostrar)\s+(?:a\s+)?(?:tela|monitor|display|screen)", text):
+            return "Permita-me observar a tela, Senhor.\n" + ver_tela(api_key=self._get_api_key(), modelo=self._get_modelo())
+
+        # Ajuda / Comandos
+        if text in ("?", "ajuda", "comandos", "help", "o que voce faz", "o que voce sabe fazer"):
+            return """Aqui estao meus comandos, Senhor:
+
+ABRIR/FECHAR:
+- "abra [programa]" - abre um programa
+- "abra pasta [nome]" - abre uma pasta
+- "abra arquivo [caminho]" - abre um arquivo
+- "feche [programa]" - fecha um programa
+
+SISTEMA:
+- "monitorar pc" - ver desempenho do PC
+- "programas abertos" - lista de programas
+- "desligar computador" - desliga o PC
+- "reiniciar computador" - reinicia o PC
+- "suspender" - modo suspensao
+
+ARQUIVOS:
+- "liste arquivos em [pasta]" - ver conteudo
+- "crie arquivo [nome] com [conteudo]" - criar arquivo
+- "delete [arquivo]" - remover arquivo
+
+OUTROS:
+- "veja a tela" - descrever tela
+- "pesquise [assunto] na internet" - buscar info
+- "crie codigo em [linguagem] para [tarefa]"
+- "lembrete [texto] em [tempo]"
+- "trocar voz [nome]" - mudar voz
+- "velocidade voz [0.5-2.0]" - ajustar velocidade"""
+
         # Abrir programa (com opcao de monitor)
         m = re.match(r"(?:abra|abrir|abre|iniciar|inicia|quero|preciso|pode|pode me)\s+(.+)", text)
         if m:
