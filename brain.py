@@ -165,11 +165,11 @@ def ver_tela(api_key: str, modelo: str = None) -> str:
             json={
                 "contents": [{
                     "parts": [
-                        {"text": "Descreva o que voce ve nesta tela de computador em 2-3 frases curtas. Apenas liste os programas e websites visiveis, sem formatacao markdown, sem asteriscos, sem negrito. Responda em portugues."},
+                        {"text": "Voce e Jarvis, um mordomo assistente. Descreva DETALHADAMENTE o que voce ve nesta tela de computador. Inclua: 1) Quais programas ou aplicativos estao abertos, 2) Quais websites estao visiveis no navegador, 3) Se ha pastas ou arquivos visiveis, 4) Qualquer outro detalhe relevante. Responda em portugues, em 3-4 frases completas. NAO use markdown, asteriscos ou formatacao."},
                         {"inline_data": {"mime_type": "image/png", "data": img_b64}},
                     ]
                 }],
-                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 256},
+                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 512},
             },
             timeout=30,
         )
