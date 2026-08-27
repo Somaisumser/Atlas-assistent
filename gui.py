@@ -1072,6 +1072,8 @@ OUTROS:
                 self._gemini_model = cfg.get("gemini_model", self._gemini_model)
                 self._motor_voz = cfg.get("motor_voz", self._motor_voz)
                 self._tema = cfg.get("tema", {})
+                # Aplica o motor de voz (ex: gemini) ao modulo de voz global
+                configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model)
         except Exception:
             pass
 

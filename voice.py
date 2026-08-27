@@ -9,6 +9,7 @@ import pygame
 import io
 import wave
 import base64
+import requests
 
 _engine = None
 _lock = threading.Lock()
@@ -259,6 +260,87 @@ async def _edge_speak(texto: str, voz: str, velocidade: float = 1.0):
             pass
 
 
+def _gemini_speak(texto: str, velocidade: float = 1.0):
+    """Usa o TTS nativo do Gemini (voz de conversa natural, estilo ChatGPT/Gemini)."""
+    if not _gemini_key:
+        raise RuntimeError("sem chave Gemini")
+
+    # Velocidade: Gemini fala numa cadencia natural; ajuste fino via rate
+    rate = int((velocidade - 1.0) * 100)
+    rate_str = f"+{rate}%" if rate >= 0 else f"{rate}%"
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent"
+    resp = requests.post(
+        url,
+        headers={"x-goog-api-key": _gemini_key, "Content-Type": "application/json"},
+        json={
+            "contents": [{"parts": [{"text": texto}]}],
+            "generationConfig": {
+                "speechConfig": {
+                    "spokenOutput": {
+                        "synthesisConfig": {
+                            "voice": "Kore",
+                            "rate": rate_str,
+                        }
+                    }
+                }
+            },
+        },
+        timeout=60,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    entries = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+    pcm_b64 = None
+    mime = "audio/pcm"
+    for part in entries:
+        if "inlineData" in part:
+            pcm_b64 = part["inlineData"]["data"]
+            mime = part["inlineData"].get("mimeType", "audio/pcm")
+            break
+    if not pcm_b64:
+        raise RuntimeError("sem audio retornado pelo Gemini")
+
+    raw = base64.b64decode(pcm_b64)
+
+    # Se o mime nao for pcm (ex: wav), salvamos como esta; senao convertemos PCM 16k mono pra WAV
+    if "wav" in mime or "audio/wav" in mime:
+        audio_bytes = raw
+    else:
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(24000)  # Gemini TTS retorna PCM 24kHz
+            wf.writeframes(raw)
+        audio_bytes = buf.getvalue()
+
+    fd, tmp_path = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    try:
+        with open(tmp_path, "wb") as f:
+            f.write(audio_bytes)
+
+        if not _mixer_ready:
+            pygame.mixer.init()
+            _mixer_ready = True
+
+        pygame.mixer.music.load(tmp_path)
+        pygame.mixer.music.play()
+        while pygame.mixer.music.get_busy():
+            if _parar_fala.is_set():
+                pygame.mixer.music.stop()
+                break
+            pygame.time.wait(50)
+        pygame.mixer.music.unload()
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+
 def speak(texto: str, voz: str = "Antonio", velocidade: float = None):
     if not texto:
         return
@@ -268,7 +350,10 @@ def speak(texto: str, voz: str = "Antonio", velocidade: float = None):
 
     _parar_fala.clear()
     try:
-        asyncio.run(_edge_speak(texto, voz_id, vel))
+        if _motor_voz == "gemini" and _gemini_key:
+            _gemini_speak(texto, vel)
+        else:
+            asyncio.run(_edge_speak(texto, voz_id, vel))
     except Exception:
         try:
             engine = _get_engine()
