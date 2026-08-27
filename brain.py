@@ -181,3 +181,43 @@ def ver_tela(api_key: str, modelo: str = None) -> str:
         return texto
     except Exception as e:
         return f"Peço desculpas Senhor, mas nao consegui ver a tela: {e}"
+
+
+def criar_imagem(descricao: str, api_key: str, modelo: str = None, destino: str = None) -> str:
+    """Gera uma imagem usando o Gemini Imagen. Retorna o caminho do arquivo."""
+    if not api_key:
+        return "Preciso de uma API key do Gemini para criar imagens, Senhor."
+    try:
+        from pathlib import Path
+        
+        # Modelo de imagem
+        modelo_img = "imagen-3.0-generate-002"
+        
+        if destino is None:
+            destino = str(Path.home() / "Desktop" / "imagem_gerada.png")
+        
+        url = f"{GEMINI_API_URL}/{modelo_img}:predict"
+        resp = _session.post(
+            url,
+            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+            json={
+                "instances": [{"prompt": descricao}],
+                "parameters": {
+                    "sampleCount": 1,
+                    "aspectRatio": "1:1",
+                    "personGeneration": "allow_all",
+                },
+            },
+            timeout=60,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        
+        b64 = data["predictions"][0]["bytesBase64Encoded"]
+        import base64 as _b64
+        img_bytes = _b64.b64decode(b64)
+        
+        Path(destino).write_bytes(img_bytes)
+        return f"Imagem gerada com sucesso, Senhor. Salvei em: {destino}"
+    except Exception as e:
+        return f"Peço desculpas Senhor, mas nao consegui criar a imagem: {e}"

@@ -9,7 +9,7 @@ import json
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from brain import chat, ver_tela, GEMINI_MODELS
+from brain import chat, ver_tela, criar_imagem, GEMINI_MODELS
 from voice import listen, speak, VOZES, EscutaDinamica, stop_speak
 from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala, desligar_computador, reiniciar_computador, suspender_computador, open_folder, open_file
 from file_manager import list_dir, read_file, create_file, delete_file
@@ -125,6 +125,11 @@ def processar(texto):
     # Ver tela
     if re.search(r"(?:veja|ver|olhe|olha|mostra|mostrar)\s+(?:a\s+)?(?:tela|monitor|display|screen)", text_low):
         return "Permita-me observar a tela, Senhor.\n" + ver_tela(api_key=_get_api_key(), modelo=_get_model())
+
+    # Criar imagem
+    m = re.match(r"(?:crie|cria|gerar|gere|crie uma|cria uma|fazer|faça)\s+(?:uma\s+)?imagem\s+(?:de\s+|sobre\s+)?(.+)", text_low)
+    if m:
+        return criar_imagem(m.group(1).strip(), api_key=_get_api_key(), modelo=_get_model())
 
     # Ajuda / Comandos
     if text_low in ("?", "ajuda", "comandos", "help", "o que voce faz", "o que voce sabe fazer"):
