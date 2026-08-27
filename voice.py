@@ -356,17 +356,30 @@ def speak(texto: str, voz: str = "Antonio", velocidade: float = None):
     _parar_fala.clear()
     try:
         if _motor_voz == "gemini" and _gemini_key:
-            _gemini_speak(texto, vel)
+            try:
+                _gemini_speak(texto, vel)
+                return
+            except Exception:
+                # Gemini TTS falhou (503/latencia): usa Edge Antonio, que ainda e natural
+                try:
+                    asyncio.run(_edge_speak(texto, voz_id, vel))
+                    return
+                except Exception:
+                    pass
         else:
             asyncio.run(_edge_speak(texto, voz_id, vel))
+            return
     except Exception:
-        try:
-            engine = _get_engine()
-            engine.setProperty("rate", int(160 * vel))
-            engine.say(texto)
-            engine.runAndWait()
-        except Exception:
-            pass
+        pass
+
+    # Ultimo recurso: voz local do Windows (pyttsx3)
+    try:
+        engine = _get_engine()
+        engine.setProperty("rate", int(160 * vel))
+        engine.say(texto)
+        engine.runAndWait()
+    except Exception:
+        pass
 
 
 def stop_speak():
