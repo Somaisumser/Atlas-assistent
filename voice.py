@@ -15,7 +15,7 @@ _lock = threading.Lock()
 _recognizer = sr.Recognizer()
 _mic_calibrada = False
 _mixer_ready = False
-VELOCIDADE = 1.0
+VELOCIDADE = 1.15
 _ouvindo = False
 _parar_fala = threading.Event()
 _motor_voz = "google"
@@ -66,6 +66,13 @@ def _audio_para_wav(audio: sr.AudioData) -> bytes:
         wf.setframerate(audio.sample_rate)
         wf.writeframes(audio.get_raw_data())
     return buf.getvalue()
+
+
+def qualquer_signo_de_desculpa(tl: str) -> bool:
+    return any(p in tl for p in (
+        "desculpa", "peço", "peco", "lamenta", "infelizmente",
+        "nao consegui", "não consegui", "erro", "falha", "impossivel",
+    ))
 
 
 def _reconhecer_google(audio: sr.AudioData) -> str | None:
@@ -208,7 +215,24 @@ async def _edge_speak(texto: str, voz: str, velocidade: float = 1.0):
     rate = int((velocidade - 1.0) * 100)
     rate_str = f"+{rate}%" if rate >= 0 else f"{rate}%"
 
-    communicate = edge_tts.Communicate(texto, voice=voz, rate=rate_str)
+    # Entonacao mais humana: ajusta pitch e volume conforme o tipo de fala
+    pitch_base = 0
+    volume_str = "+0%"
+    tl = texto.lower()
+
+    if "?" in texto or tl.startswith(("o que", "como", "quando", "onde", "quem", "por que", "pode")):
+        pitch_base = 2
+        volume_str = "+5%"
+    elif "!" in texto or tl.startswith(("excelente", "otimo", "perfeito", "claro", "pronto", "senhor")):
+        pitch_base = -2
+        volume_str = "+8%"
+    elif qualquer_signo_de_desculpa(tl):
+        pitch_base = -4
+        volume_str = "+0%"
+
+    pitch_str = f"+{pitch_base}Hz" if pitch_base >= 0 else f"{pitch_base}Hz"
+
+    communicate = edge_tts.Communicate(texto, voice=voz, rate=rate_str, volume=volume_str, pitch=pitch_str)
 
     fd, tmp_path = tempfile.mkstemp(suffix=".mp3")
     os.close(fd)
