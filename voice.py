@@ -261,17 +261,21 @@ async def _edge_speak(texto: str, voz: str, velocidade: float = 1.0):
 
 
 def _gemini_speak(texto: str, velocidade: float = 1.0):
-    """Usa o TTS nativo do Gemini (voz de conversa natural, estilo ChatGPT/Gemini)."""
+    """Usa o TTS nativo do Gemini (voz de conversa natural) com streaming p/ reduzir lag."""
     global _mixer_ready
     if not _gemini_key:
         raise RuntimeError("sem chave Gemini")
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent"
+    model = "gemini-2.5-flash-preview-tts"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse"
+
+    # Coleta todos os chunks SSE de audio
+    pcm_chunks = []
     resp = requests.post(
         url,
         headers={"x-goog-api-key": _gemini_key, "Content-Type": "application/json"},
         json={
-            "contents": [{"parts": [{"text": f"Faça com naturalidade, como uma conversa: {texto}"}]}],
+            "contents": [{"parts": [{"text": f"Fale com naturalidade, como numa conversa humana: {texto}"}]}],
             "generationConfig": {
                 "responseModalities": ["AUDIO"],
                 "speechConfig": {
@@ -281,21 +285,32 @@ def _gemini_speak(texto: str, velocidade: float = 1.0):
                 },
             },
         },
-        timeout=120,
+        stream=True,
+        timeout=150,
     )
     resp.raise_for_status()
-    data = resp.json()
 
-    entries = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
-    pcm_b64 = None
-    for part in entries:
-        if "inlineData" in part:
-            pcm_b64 = part["inlineData"]["data"]
-            break
-    if not pcm_b64:
+    import json as _json
+    for line in resp.iter_lines():
+        if _parar_fala.is_set():
+            resp.close()
+            return
+        if line and line.startswith(b"data:"):
+            payload = line[5:].strip()
+            if not payload:
+                continue
+            try:
+                chunk = _json.loads(payload)
+            except _json.JSONDecodeError:
+                continue
+            for part in chunk.get("candidates", [{}])[0].get("content", {}).get("parts", []):
+                if "inlineData" in part and part["inlineData"].get("data"):
+                    pcm_chunks.append(base64.b64decode(part["inlineData"]["data"]))
+
+    if not pcm_chunks:
         raise RuntimeError("sem audio retornado pelo Gemini")
 
-    raw = base64.b64decode(pcm_b64)
+    raw = b"".join(pcm_chunks)
 
     # Gemini TTS retorna PCM signed 16-bit, 24000 Hz, mono -> empacotar em WAV
     buf = io.BytesIO()
