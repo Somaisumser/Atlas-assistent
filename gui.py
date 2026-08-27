@@ -1182,14 +1182,12 @@ OUTROS:
         if self.escuta_dinamica and self.escuta_dinamica.ativo:
             self.escuta_dinamica.parar()
         self.destroy()
+        import os
+        os._exit(0)
 
     def _on_minimize(self, event):
         if event.state == "iconic":
             self.after(100, self._start_tray)
 
     def _on_close(self):
-        if HAS_TRAY:
-            self.withdraw()
-            self._start_tray()
-        else:
-            self._do_quit_from_tray()
+        self._do_quit_from_tray()
