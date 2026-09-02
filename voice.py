@@ -125,7 +125,7 @@ def listen(timeout=8, phrase_limit=15) -> str | None:
 
 
 class EscutaDinamica:
-    def __init__(self, callback, palavra_ativacao="jarvis"):
+    def __init__(self, callback, palavra_ativacao="atlas"):
         self.callback = callback
         self.palavra_ativacao = palavra_ativacao.lower()
         self.ativo = False

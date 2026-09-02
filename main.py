@@ -1,5 +1,5 @@
 """
-Jarvis - Assistente Pessoal
+Atlas - Assistente Pessoal
 Ponto de entrada principal. Rode com: python main.py
 """
 import sys
@@ -8,7 +8,7 @@ import threading
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from gui import JarvisApp
+from gui import AtlasApp
 from updater import verificar_atualizacoes, aplicar_atualizacao, reiniciar
 
 
@@ -78,8 +78,8 @@ def _verificar_updates_gui(app):
 
 
 def main():
-    print("[Jarvis] Iniciando...")
-    app = JarvisApp()
+    print("[Atlas] Iniciando...")
+    app = AtlasApp()
     threading.Thread(target=_verificar_updates_gui, args=(app,), daemon=True).start()
     app.mainloop()
 

@@ -1,5 +1,5 @@
 """
-Jarvis - Versao Terminal
+Atlas - Versao Terminal
 Rode com: python terminal.py
 """
 import re
@@ -88,11 +88,11 @@ def _parse_monitor(texto):
 
 
 def on_dynamic_voice(texto):
-    print_colorido(f"\n[Jarvis ouviu]: {texto}", "azul")
+    print_colorido(f"\n[Atlas ouviu]: {texto}", "azul")
     HISTORICO.append({"role": "user", "content": texto})
     resp = processar(texto)
     HISTORICO.append({"role": "assistant", "content": resp})
-    print_colorido(f"\nJarvis: {resp}", "verde")
+    print_colorido(f"\nAtlas: {resp}", "verde")
     speak(resp, VOZ_ATUAL, VELOCIDADE)
 
 
@@ -250,7 +250,7 @@ OUTROS:
     # Listar arquivos codigo
     if "arquivos codigo" in text_low or "listar arquivos codigo" in text_low:
         arquivos = listar_arquivos_codigo()
-        return "Arquivos do Jarvis, Senhor:\n" + "\n".join(f"  - {a}" for a in arquivos)
+        return "Arquivos do Atlas, Senhor:\n" + "\n".join(f"  - {a}" for a in arquivos)
 
     # Ler arquivo codigo
     m = re.match(r"(?:leia|leer|mostrar|ver)\s+(?:o\s+)?arquivo\s+(.+)", text_low)
@@ -301,15 +301,15 @@ OUTROS:
 
 def main():
     print_colorido("=" * 55, "ciano")
-    print_colorido("  JARVIS - Mordomo Virtual Pessoal", "negrito")
+    print_colorido("  ATLAS - Mordomo Virtual Pessoal", "negrito")
     print_colorido("  Comandos:", "ciano")
     print_colorido("  'falar' - voz unica | 'escuta on' - escuta dinamica", "ciano")
     print_colorido("  'trocar voz [nome]' | 'velocidade voz 1.5'", "ciano")
-    print_colorido("  'arquivos codigo' - ver arquivos do Jarvis", "ciano")
+    print_colorido("  'arquivos codigo' - ver arquivos do Atlas", "ciano")
     print_colorido("  'leia arquivo gui.py' - ver codigo fonte", "ciano")
     print_colorido("  'parar' - interromper | 'sair' - fechar", "ciano")
     print_colorido("=" * 55, "ciano")
-    print_colorido("Jarvis: Aos seus servicos, Senhor. Como posso ajuda-lo?", "verde")
+    print_colorido("Atlas: Aos seus servicos, Senhor. Como posso ajuda-lo?", "verde")
 
     global escuta_dinamica
     _load_config()
@@ -337,7 +337,7 @@ def main():
         if texto.lower() in ("escuta on", "ligar escuta", "escuta ligar"):
             escuta_dinamica = EscutaDinamica(callback=on_dynamic_voice)
             escuta_dinamica.iniciar()
-            print_colorido("Escuta dinamica LIGADA. Diga 'Jarvis' para ativar.", "verde")
+            print_colorido("Escuta dinamica LIGADA. Diga 'Atlas' para ativar.", "verde")
             continue
         if texto.lower() in ("escuta off", "desligar escuta", "escuta desligar"):
             if escuta_dinamica:
@@ -372,7 +372,7 @@ def main():
 
         HISTORICO.append({"role": "assistant", "content": resp})
 
-        print_colorido(f"\nJarvis: {resp}", "verde")
+        print_colorido(f"\nAtlas: {resp}", "verde")
         speak(resp, VOZ_ATUAL, VELOCIDADE)
 
 

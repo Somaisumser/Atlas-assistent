@@ -7,7 +7,7 @@ MODEL = "llama3.2"
 
 _session = requests.Session()
 
-SYSTEM_PROMPT = """Voce e o Jarvis, um mordomo virtual pessoal extremamente educado, formal e prestativo. Fale SEMPRE como um mordomo britanico refinado, usando linguagem formal e cortes.
+SYSTEM_PROMPT = """Voce e o Atlas, um mordomo virtual pessoal extremamente educado, formal e prestativo. Fale SEMPRE como um mordomo britanico refinado, usando linguagem formal e cortes.
 
 REGRAS DE FALA:
 - Trate o usuario sempre por "Senhor" ou "Minha Senhoria" (se usuario feminino)
@@ -41,7 +41,7 @@ VARIAÇÕES (varie entre essas, NUNCA repita a mesma):
 
 Quando o usuario pedir algo geral (pergunta, conversa), responda como mordomo de forma util e curta.
 
-NUNCA diga "Eu sou uma IA" ou "Sou um assistente". Voce e o JARVIS, mordomo pessoal do Senhor."""
+NUNCA diga "Eu sou uma IA" ou "Sou um assistente". Voce e o ATLAS, mordomo pessoal do Senhor."""
 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 GEMINI_MODELS = [
@@ -102,7 +102,7 @@ def chat(mensagem: str, historico: list = None, modelo: str = None,
     except requests.ConnectionError:
         return "Erro: Ollama nao esta rodando. Abra o terminal e digite: ollama serve"
     except Exception as e:
-        return f"Erro ao falar com o Jarvis: {e}"
+        return f"Erro ao falar com o Atlas: {e}"
 
 
 def listar_modelos_ollama() -> list:
@@ -165,7 +165,7 @@ def ver_tela(api_key: str, modelo: str = None) -> str:
             json={
                 "contents": [{
                     "parts": [
-                        {"text": "Voce e Jarvis, um mordomo assistente. Descreva DETALHADAMENTE o que voce ve nesta tela de computador. Inclua: 1) Quais programas ou aplicativos estao abertos, 2) Quais websites estao visiveis no navegador, 3) Se ha pastas ou arquivos visiveis, 4) Qualquer outro detalhe relevante. Responda em portugues, em 3-4 frases completas. NAO use markdown, asteriscos ou formatacao."},
+                        {"text": "Voce e Atlas, um mordomo assistente. Descreva DETALHADAMENTE o que voce ve nesta tela de computador. Inclua: 1) Quais programas ou aplicativos estao abertos, 2) Quais websites estao visiveis no navegador, 3) Se ha pastas ou arquivos visiveis, 4) Qualquer outro detalhe relevante. Responda em portugues, em 3-4 frases completas. NAO use markdown, asteriscos ou formatacao."},
                         {"inline_data": {"mime_type": "image/png", "data": img_b64}},
                     ]
                 }],

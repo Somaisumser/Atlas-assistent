@@ -80,7 +80,7 @@ def verificar_atualizacoes():
         # Pega ultimo commit remoto
         req = urllib.request.Request(
             "https://api.github.com/repos/Somaisumser/jarvis-assistent/commits?sha=main&per_page=1",
-            headers={"User-Agent": "Jarvis-Updater"}
+            headers={"User-Agent": "Atlas-Updater"}
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             dados = json.loads(resp.read())
@@ -128,7 +128,7 @@ def aplicar_atualizacao_git():
     if code == 0:
         if "Already up to date" in stdout or "nao ha nada para" in stdout.lower():
             return True, "Ja esta atualizado."
-        return True, "Atualizado com sucesso! Reinicie o Jarvis."
+        return True, "Atualizado com sucesso! Reinicie o Atlas."
     return False, f"Erro ao atualizar: {stdout}"
 
 
@@ -185,7 +185,7 @@ def aplicar_atualizacao_zip():
             subprocess.run([venv_pip, "install", "-r", req_path, "--quiet"],
                          capture_output=True, timeout=120)
 
-        return True, "Atualizado com sucesso! Reinicie o Jarvis."
+        return True, "Atualizado com sucesso! Reinicie o Atlas."
     except Exception as e:
         return False, f"Erro ao atualizar: {e}"
 
@@ -198,6 +198,6 @@ def aplicar_atualizacao():
 
 
 def reiniciar():
-    """Reinicia o Jarvis."""
+    """Reinicia o Atlas."""
     python = sys.executable
     os.execl(python, python, *sys.argv)

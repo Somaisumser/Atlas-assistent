@@ -79,11 +79,11 @@ PANEL_PADRAO = PANEL
 ACCENT_PADRAO = ACCENT
 TEXT_PADRAO = TEXT
 
+class AtlasApp(ctk.CTk):
 
-class JarvisApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("Jarvis - Assistente Pessoal")
+        self.title("Atlas - Assistente Pessoal")
         self.geometry("750x900")
         self.minsize(600, 750)
         self.configure(fg_color=BG)
@@ -108,14 +108,14 @@ class JarvisApp(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.bind("<Unmap>", self._on_minimize)
         self.after(100, self._iniciar_reminders)
-        self.log("Jarvis", "Aos seus servicos, Senhor. Como posso ajuda-lo?")
+        self.log("Atlas", "Aos seus servicos, Senhor. Como posso ajuda-lo?")
 
     def _build_ui(self):
         header = ctk.CTkFrame(self, fg_color=PANEL, corner_radius=12)
         header.pack(fill="x", padx=15, pady=(15, 10))
         title_box = ctk.CTkFrame(header, fg_color="transparent")
         title_box.pack(side="left", padx=5, pady=10)
-        ctk.CTkLabel(title_box, text="JARVIS", font=ctk.CTkFont(size=32, weight="bold"), text_color=ACCENT).pack(anchor="w")
+        ctk.CTkLabel(title_box, text="ATLAS", font=ctk.CTkFont(size=32, weight="bold"), text_color=ACCENT).pack(anchor="w")
         ctk.CTkLabel(title_box, text="assistente pessoal", font=ctk.CTkFont(size=12), text_color=MUTED).pack(anchor="w")
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.pack(side="right", padx=5, pady=10)
@@ -175,7 +175,7 @@ class JarvisApp(ctk.CTk):
 
         box_voz = ctk.CTkFrame(scroll_voz, fg_color="#1a1a3a", corner_radius=8)
         box_voz.pack(fill="x", pady=(0, 8))
-        ctk.CTkLabel(box_voz, text="Voz do Jarvis", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        ctk.CTkLabel(box_voz, text="Voz do Atlas", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
         self._voice_var = ctk.StringVar(value=self.vozelecionada)
         for nome, voz_id in VOZES.items():
             ctk.CTkRadioButton(box_voz, text=f"{nome}  ({voz_id})", variable=self._voice_var, value=nome, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13)).pack(anchor="w", pady=3, padx=(20, 0))
@@ -206,7 +206,7 @@ class JarvisApp(ctk.CTk):
 
         box_provider = ctk.CTkFrame(scroll_config, fg_color="#1a1a3a", corner_radius=8)
         box_provider.pack(fill="x", pady=(0, 8))
-        ctk.CTkLabel(box_provider, text="Cerebro do Jarvis", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        ctk.CTkLabel(box_provider, text="Cerebro do Atlas", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
         self._provider_var = ctk.StringVar(value=self._provider)
         for prov, label in [("ollama", "Ollama (Local, Gratis)"), ("gemini", "Google Gemini (Nuvem, Gratis)")]:
             ctk.CTkRadioButton(box_provider, text=label, variable=self._provider_var, value=prov, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13), command=self._on_provider_change).pack(anchor="w", pady=3, padx=(20, 0))
@@ -276,7 +276,7 @@ class JarvisApp(ctk.CTk):
 
         box_sobre = ctk.CTkFrame(scroll_sobre, fg_color="#1a1a3a", corner_radius=8)
         box_sobre.pack(fill="x", pady=(0, 8))
-        ctk.CTkLabel(box_sobre, text="Jarvis - Assistente Pessoal", font=ctk.CTkFont(size=18, weight="bold"), text_color=ACCENT).pack(pady=(20, 10))
+        ctk.CTkLabel(box_sobre, text="Atlas - Assistente Pessoal", font=ctk.CTkFont(size=18, weight="bold"), text_color=ACCENT).pack(pady=(20, 10))
         ctk.CTkLabel(box_sobre, text="Assistente virtual local e gratuito.\nUsa Ollama como cerebro.\nVozes neurais da Microsoft.", text_color=TEXT, font=ctk.CTkFont(size=13), justify="center").pack(padx=20)
 
         box_func = ctk.CTkFrame(scroll_sobre, fg_color="#1a1a3a", corner_radius=8)
@@ -311,7 +311,7 @@ class JarvisApp(ctk.CTk):
 
         box_tema_cor = ctk.CTkFrame(scroll_tema, fg_color="#1a1a3a", corner_radius=8)
         box_tema_cor.pack(fill="x", pady=(0, 8))
-        ctk.CTkLabel(box_tema_cor, text="Cores do Jarvis", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        ctk.CTkLabel(box_tema_cor, text="Cores do Atlas", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
 
         self._tema_preview = ctk.CTkFrame(box_tema_cor, fg_color=self._tema_cores["bg"].get(), corner_radius=8, border_width=2, border_color=self._tema_cores["accent"].get())
         self._tema_preview.pack(fill="x", padx=(20, 20), pady=(0, 10))
@@ -408,7 +408,7 @@ class JarvisApp(ctk.CTk):
 
     def _open_help(self):
         win = ctk.CTkToplevel(self)
-        win.title("Comandos do Jarvis")
+        win.title("Comandos do Atlas")
         win.geometry("480x560")
         win.configure(fg_color=BG)
         win.grab_set()
@@ -522,7 +522,7 @@ class JarvisApp(ctk.CTk):
         aba_dev = tab.add("Dev")
         _add_comandos(aba_dev, [
             ("Modificar codigo", [
-                "Use a aba Dev na GUI para modificar arquivos do Jarvis",
+                "Use a aba Dev na GUI para modificar arquivos do Atlas",
             ]),
         ])
 
@@ -693,7 +693,7 @@ class JarvisApp(ctk.CTk):
     def log(self, sender, text):
         def _inserir():
             self.chat.configure(state="normal")
-            prefix = "Voce" if sender == "user" else "Jarvis"
+            prefix = "Voce" if sender == "user" else "Atlas"
             text_limpo = _strip_ansi(text)
             self.chat.insert("end", f"{prefix}: {text_limpo}\n\n")
             self.chat.configure(state="disabled")
@@ -759,7 +759,7 @@ class JarvisApp(ctk.CTk):
             self.escuta_dinamica = EscutaDinamica(callback=self._on_dynamic_voice)
             self.escuta_dinamica.iniciar()
             self.listen_btn.configure(text="Escuta: ON", fg_color=GREEN, text_color=BG)
-            self._set_status("Diga 'Jarvis' para ativar", GREEN)
+            self._set_status("Diga 'Atlas' para ativar", GREEN)
 
     def _process(self, text):
         self.pensando = True
@@ -964,7 +964,7 @@ OUTROS:
         if not self.pensando:
             return
         self.after(0, lambda: self.stop_btn.configure(fg_color=RED))
-        self.log("jarvis", resp)
+        self.log("atlas", resp)
         self._set_status("Pronto")
 
         # Se tem tabela + fala, fala so a parte de texto (ultima linha)
@@ -1157,10 +1157,10 @@ OUTROS:
         if not image:
             return
         menu = pystray.Menu(
-            pystray.MenuItem("Abrir Jarvis", self._show_from_tray, default=True),
+            pystray.MenuItem("Abrir Atlas", self._show_from_tray, default=True),
             pystray.MenuItem("Sair", self._quit_from_tray),
         )
-        self._tray_icon = pystray.Icon("Jarvis", image, "Jarvis Assistente", menu)
+        self._tray_icon = pystray.Icon("Atlas", image, "Atlas Assistente", menu)
         threading.Thread(target=self._tray_icon.run, daemon=True).start()
 
     def _stop_tray(self):

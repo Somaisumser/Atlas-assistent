@@ -106,18 +106,18 @@ Terminal:
   COMANDOS DE VOZ
 ============================================================
 
-Diga "Jarvis" seguido do comando:
+Diga "Atlas" seguido do comando:
 
-  "Jarvis, abre o discord"
-  "Jarvis, abre o spotify no segundo monitor"
-  "Jarvis, fecha o chrome"
-  "Jarvis, monitorar pc"
-  "Jarvis, que horas sao"
-  "Jarvis, pesquisar na internet por receitas"
-  "Jarvis, cria um codigo em python para calcular fibonacci"
-  "Jarvis, lembra de beber agua em 30 minutos"
-  "Jarvis, lista os arquivos na area de trabalho"
-  "Jarvis, abre o vs code no monitor 2"
+  "Atlas, abre o discord"
+  "Atlas, abre o spotify no segundo monitor"
+  "Atlas, fecha o chrome"
+  "Atlas, monitorar pc"
+  "Atlas, que horas sao"
+  "Atlas, pesquisar na internet por receitas"
+  "Atlas, cria um codigo em python para calcular fibonacci"
+  "Atlas, lembra de beber agua em 30 minutos"
+  "Atlas, lista os arquivos na area de trabalho"
+  "Atlas, abre o vs code no monitor 2"
 
 
 ============================================================
@@ -125,13 +125,13 @@ Diga "Jarvis" seguido do comando:
 ============================================================
 
   falar            - Ativa o microfone para um comando
-  escuta on        - Ativa escuta continua (ativa "Jarvis")
+  escuta on        - Ativa escuta continua (ativa "Atlas")
   escuta off       - Desativa escuta continua
   trocar voz ana   - Troca a voz para Ana
   velocidade voz 1.5 - Ajusta velocidade da fala
-  arquivos codigo  - Lista arquivos do Jarvis
+  arquivos codigo  - Lista arquivos do Atlas
   parar            - Interrompe a fala
-  sair             - Fecha o Jarvis
+  sair             - Fecha o Atlas
 
 
 ============================================================
@@ -221,7 +221,7 @@ Cada PC mantem seus proprios lembretes e configuracoes.
   CREDITOS
 ============================================================
 
-Jarvis - Mordomo Virtual Pessoal
+Atlas - Mordomo Virtual Pessoal
 Criado com Python, Ollama, e muito carinho.
 
 ============================================================

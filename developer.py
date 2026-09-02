@@ -1,6 +1,6 @@
 """
-Jarvis - Modo Desenvolvedor
-Permite modificar o codigo fonte do Jarvis com aprovacao do usuario.
+Atlas - Modo Desenvolvedor
+Permite modificar o codigo fonte do Atlas com aprovacao do usuario.
 """
 import os
 import re
@@ -48,7 +48,7 @@ def restaurar_backup(nome_backup):
 
 
 def listar_arquivos_codigo():
-    """Lista os arquivos Python do Jarvis."""
+    """Lista os arquivos Python do Atlas."""
     arquivos = []
     for f in os.listdir(JARVIS_DIR):
         if f.endswith(".py"):
@@ -57,7 +57,7 @@ def listar_arquivos_codigo():
 
 
 def ler_arquivo(nome_arquivo):
-    """Le o conteudo de um arquivo do Jarvis."""
+    """Le o conteudo de um arquivo do Atlas."""
     caminho = os.path.join(JARVIS_DIR, nome_arquivo)
     if not os.path.exists(caminho):
         return None, f"Arquivo '{nome_arquivo}' nao encontrado."
@@ -67,7 +67,7 @@ def ler_arquivo(nome_arquivo):
 
 
 def salvar_arquivo(nome_arquivo, conteudo):
-    """Salva o conteudo em um arquivo do Jarvis COM backup."""
+    """Salva o conteudo em um arquivo do Atlas COM backup."""
     if not conteudo or not conteudo.strip():
         return "Erro: conteudo vazio nao pode ser salvo."
     criar_backup(nome_arquivo)
