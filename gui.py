@@ -20,7 +20,7 @@ def _strip_ansi(texto):
     return re.sub(r'\033\[[0-9;]*m', '', texto)
 
 from brain import chat, ver_tela, criar_imagem, GEMINI_MODELS
-from voice import listen, speak, stop_speak, VOZES, EscutaDinamica, configurar_motor_voz
+from voice import listen, speak, stop_speak, VOZES, EscutaDinamica, configurar_motor_voz, MOTORES_FALA
 from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala, desligar_computador, reiniciar_computador, suspender_computador, open_folder, open_file
 from file_manager import list_dir, read_file, create_file, delete_file
 from web_search import search
@@ -98,11 +98,12 @@ class AtlasApp(ctk.CTk):
         self._gemini_key = ""
         self._gemini_model = "gemini-3.6-flash"
         self._motor_voz = "google"
+        self._motor_tts = "edge"
         self._tema = {}
         self._tray_icon = None
         self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
         self._load_config()
-        configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model)
+        configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model, self._motor_tts)
         self._aplicar_tema()
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -189,6 +190,14 @@ class AtlasApp(ctk.CTk):
             ctk.CTkRadioButton(box_motor, text=label, variable=self._motor_var, value=motor, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13)).pack(anchor="w", pady=3, padx=(20, 0))
         ctk.CTkLabel(box_motor, text="Gemini usa a mesma API key do cerebro", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(4, 10))
 
+        box_fala = ctk.CTkFrame(scroll_voz, fg_color="#1a1a3a", corner_radius=8)
+        box_fala.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(box_fala, text="Motor de Fala", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
+        self._motor_tts_var = ctk.StringVar(value=self._motor_tts)
+        for m, label in [("edge", "Padrao - Edge TTS (natural, sem API)"), ("gemini", "Humano - Gemini TTS (mais natural, usa API key)")]:
+            ctk.CTkRadioButton(box_fala, text=label, variable=self._motor_tts_var, value=m, text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_DIM, font=ctk.CTkFont(size=13)).pack(anchor="w", pady=3, padx=(20, 0))
+        ctk.CTkLabel(box_fala, text="'Humano' so funciona se a API key Gemini estiver configurada", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(4, 10))
+
         box_vel = ctk.CTkFrame(scroll_voz, fg_color="#1a1a3a", corner_radius=8)
         box_vel.pack(fill="x", pady=(0, 8))
         ctk.CTkLabel(box_vel, text="Velocidade da voz", font=ctk.CTkFont(size=14, weight="bold"), text_color=ACCENT, anchor="w").pack(anchor="w", pady=(10, 8), padx=(12, 0))
@@ -198,7 +207,7 @@ class AtlasApp(ctk.CTk):
         self._speed_label = ctk.CTkLabel(box_vel, text=f"Velocidade: {self.velocidade_voz:.1f}x", text_color=TEXT, font=ctk.CTkFont(size=13))
         self._speed_label.pack(anchor="w", padx=(20, 0), pady=(5, 0))
         self._speed_slider.configure(command=lambda v: self._speed_label.configure(text=f"Velocidade: {v:.1f}x"))
-        ctk.CTkButton(box_vel, text="Testar voz", fg_color="#2a2a4a", hover_color="#3a3a5a", text_color=TEXT, font=ctk.CTkFont(size=12), command=lambda: threading.Thread(target=speak, args=("Teste de voz.", self._voice_var.get(), self._speed_slider.get()), daemon=True).start()).pack(pady=(10, 12), padx=(20, 0), anchor="w")
+        ctk.CTkButton(box_vel, text="Testar voz", fg_color="#2a2a4a", hover_color="#3a3a5a", text_color=TEXT, font=ctk.CTkFont(size=12), command=lambda: threading.Thread(target=self._testar_voz, daemon=True).start()).pack(pady=(10, 12), padx=(20, 0), anchor="w")
 
         aba_config = tab.add("Cerebro")
         scroll_config = ctk.CTkScrollableFrame(aba_config, fg_color="transparent")
@@ -401,10 +410,16 @@ class AtlasApp(ctk.CTk):
             self._gemini_key = self._gemini_key_entry.get().strip()
             self._gemini_model = self._gemini_model_var.get()
             self._motor_voz = self._motor_var.get()
-            configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model)
+            self._motor_tts = self._motor_tts_var.get()
+            configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model, self._motor_tts)
             self._atualizar_host_ollama()
             win.destroy()
         ctk.CTkButton(win, text="Salvar", fg_color=ACCENT_DIM, hover_color=ACCENT, text_color=BG, font=ctk.CTkFont(size=14, weight="bold"), height=40, corner_radius=10, command=salvar).pack(pady=(0, 15), padx=15, fill="x")
+
+    def _testar_voz(self):
+        # Aplica o motor de fala escolhido imediatamente antes de testar
+        configurar_motor_voz(self._motor_var.get(), self._gemini_key, self._gemini_model, self._motor_tts_var.get())
+        speak("Teste de voz.", self._voice_var.get(), self._speed_slider.get())
 
     def _open_help(self):
         win = ctk.CTkToplevel(self)
@@ -1071,9 +1086,10 @@ OUTROS:
                 self._gemini_key = cfg.get("gemini_key", self._gemini_key)
                 self._gemini_model = cfg.get("gemini_model", self._gemini_model)
                 self._motor_voz = cfg.get("motor_voz", self._motor_voz)
+                self._motor_tts = cfg.get("motor_tts", self._motor_tts)
                 self._tema = cfg.get("tema", {})
                 # Aplica o motor de voz (ex: gemini) ao modulo de voz global
-                configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model)
+                configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model, self._motor_tts)
         except Exception:
             pass
 
@@ -1088,6 +1104,7 @@ OUTROS:
                 "gemini_key": self._gemini_key,
                 "gemini_model": self._gemini_model,
                 "motor_voz": self._motor_voz,
+                "motor_tts": self._motor_tts,
                 "tema": {
                     "accent": self._tema_cores["accent"].get(),
                     "bg": self._tema_cores["bg"].get(),

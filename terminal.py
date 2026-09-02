@@ -11,7 +11,7 @@ import threading
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from brain import chat, ver_tela, criar_imagem, GEMINI_MODELS
-from voice import listen, speak, VOZES, EscutaDinamica, stop_speak
+from voice import listen, speak, VOZES, EscutaDinamica, stop_speak, configurar_motor_voz, trocar_motor_fala, motor_fala_atual, listar_motores_fala
 from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala, desligar_computador, reiniciar_computador, suspender_computador, open_folder, open_file
 from file_manager import list_dir, read_file, create_file, delete_file
 from web_search import search
@@ -26,11 +26,13 @@ escuta_dinamica = None
 _provider = "ollama"
 _gemini_key = ""
 _gemini_model = "gemini-3.6-flash"
+_motor_voz = "google"
+_motor_tts = "edge"
 _config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 
 def _load_config():
-    global _provider, _gemini_key, _gemini_model
+    global _provider, _gemini_key, _gemini_model, _motor_voz, _motor_tts
     try:
         if os.path.exists(_config_path):
             with open(_config_path, "r", encoding="utf-8") as f:
@@ -38,6 +40,8 @@ def _load_config():
             _provider = cfg.get("provider", _provider)
             _gemini_key = cfg.get("gemini_key", _gemini_key)
             _gemini_model = cfg.get("gemini_model", _gemini_model)
+            _motor_voz = cfg.get("motor_voz", _motor_voz)
+            _motor_tts = cfg.get("motor_tts", _motor_tts)
     except Exception:
         pass
 
@@ -248,6 +252,23 @@ OUTROS:
     if "velocidade" in text_low and "voz" in text_low:
         return f"Velocidade atual: {VELOCIDADE}x, Senhor. Use 'velocidade voz 1.5' para alterar (0.5 a 2.0)."
 
+    # Trocar motor de fala
+    m = re.match(r"(?:troca|trocar|muda|mudar|altera|alterar|coloca|colocar|usa|usar)\s+(?:o\s+)?motor\s+(?:de\s+fala|de\s+voz|fala|voz)\s+(.+)", text_low)
+    if m:
+        escolha = m.group(1).strip().lower()
+        if escolha in ("padrao", "padrão", "edge", "padra"):
+            trocar_motor_fala("edge")
+            return "Motor de fala definido para o padrao (Edge TTS), Senhor. Natural e sem depender de API."
+        if escolha in ("humano", "humana", "gemini", "mais humano", "mais natural"):
+            trocar_motor_fala("gemini")
+            return "Motor de fala definido para o humano (Gemini TTS), Senhor. A conversa fica mais natural."
+        return listar_motores_fala()
+
+    # Listar / consultar motor de fala
+    if re.search(r"(?:motor\s+(?:de\s+fala|de\s+voz|fala|voz)|qual\s+o\s+motor)", text_low):
+        nome = "padrao (Edge TTS)" if motor_fala_atual() == "edge" else "humano (Gemini TTS)"
+        return f"Motor de fala atual: {nome}, Senhor. Use 'trocar motor de fala humano' ou 'trocar motor de fala padrao'."
+
     # Listar arquivos codigo
     if "arquivos codigo" in text_low or "listar arquivos codigo" in text_low:
         arquivos = listar_arquivos_codigo()
@@ -314,7 +335,8 @@ def main():
 
     global escuta_dinamica
     _load_config()
-    print_colorido(f"Provider: {_provider.upper()}", "amarelo")
+    configurar_motor_voz(_motor_voz, _gemini_key, _gemini_model, _motor_tts)
+    print_colorido(f"Provider: {_provider.upper()} | Motor de fala: {motor_fala_atual().upper()}", "amarelo")
     check_reminders(lambda msg: print_colorido(f"\n[Lembrete] {msg}", "amarelo"))
 
     while True:

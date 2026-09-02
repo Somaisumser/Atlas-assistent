@@ -20,6 +20,7 @@ VELOCIDADE = 1.15
 _ouvindo = False
 _parar_fala = threading.Event()
 _motor_voz = "google"
+_motor_tts = "edge"
 _gemini_key = ""
 _gemini_model = ""
 
@@ -105,11 +106,17 @@ def _reconhecer_audio(audio: sr.AudioData) -> str | None:
     return _reconhecer_google(audio)
 
 
-def configurar_motor_voz(motor: str, gemini_key: str = "", gemini_model: str = ""):
-    global _motor_voz, _gemini_key, _gemini_model
+MOTORES_FALA = ("edge", "gemini")
+
+
+def configurar_motor_voz(motor: str, gemini_key: str = "", gemini_model: str = "", motor_tts: str = "edge"):
+    """Configura os motores de reconhecimento (motor) e de fala (motor_tts)."""
+    global _motor_voz, _gemini_key, _gemini_model, _motor_tts
     _motor_voz = motor
     _gemini_key = gemini_key
     _gemini_model = gemini_model
+    if motor_tts in MOTORES_FALA:
+        _motor_tts = motor_tts
 
 
 def listen(timeout=8, phrase_limit=15) -> str | None:
@@ -354,23 +361,26 @@ def speak(texto: str, voz: str = "Antonio", velocidade: float = None):
     vel = velocidade if velocidade is not None else VELOCIDADE
 
     _parar_fala.clear()
-    try:
-        if _motor_voz == "gemini" and _gemini_key:
+
+    # Motor de fala "gemini" = o mais humano (TTS nativo do Gemini), com fallback p/ Edge
+    if _motor_tts == "gemini" and _gemini_key:
+        try:
+            _gemini_speak(texto, vel)
+            return
+        except Exception:
+            # Gemini TTS falhou (503/latencia): usa Edge, que ainda e natural
             try:
-                _gemini_speak(texto, vel)
+                asyncio.run(_edge_speak(texto, voz_id, vel))
                 return
             except Exception:
-                # Gemini TTS falhou (503/latencia): usa Edge Antonio, que ainda e natural
-                try:
-                    asyncio.run(_edge_speak(texto, voz_id, vel))
-                    return
-                except Exception:
-                    pass
-        else:
+                pass
+    else:
+        # Motor padrao = Edge TTS (natural, sem depender de API)
+        try:
             asyncio.run(_edge_speak(texto, voz_id, vel))
             return
-    except Exception:
-        pass
+        except Exception:
+            pass
 
     # Ultimo recurso: voz local do Windows (pyttsx3)
     try:
@@ -401,6 +411,25 @@ def listar_vozes() -> str:
     for nome, voz_id in VOZES.items():
         linhas.append(f"  - {nome}: {voz_id}")
     return "Vozes disponiveis:\n" + "\n".join(linhas)
+
+
+def listar_motores_fala() -> str:
+    return ("Motores de fala disponiveis:\n"
+            "  - padrao: Edge TTS (natural, sem necessidade de API)\n"
+            "  - humano: Gemini TTS (conversa humana, usa sua API key)")
+
+
+def trocar_motor_fala(motor_tts: str) -> bool:
+    """Troca o motor de fala em tempo de execucao. Retorna True se o valor foi valido."""
+    global _motor_tts
+    if motor_tts in MOTORES_FALA:
+        _motor_tts = motor_tts
+        return True
+    return False
+
+
+def motor_fala_atual() -> str:
+    return _motor_tts
 
 
 def esta_ouvindo() -> bool:
