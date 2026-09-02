@@ -47,7 +47,8 @@ def _load_config():
 
 
 def _get_api_key():
-    if _provider == "gemini":
+    """Retorna a API key Gemini sempre que disponivel (independente do provider de chat)."""
+    if _gemini_key:
         return _gemini_key
     return None
 
@@ -56,6 +57,14 @@ def _get_model():
     if _provider == "gemini":
         return _gemini_model
     return None
+
+
+def _get_vision_model():
+    """Retorna um modelo Gemini valido para visao/imagem, independente do provider de chat."""
+    if _provider == "gemini" and _gemini_model:
+        return _gemini_model
+    from brain import GEMINI_MODELS
+    return GEMINI_MODELS[0]
 
 
 def _limpar_artigo(texto):
@@ -129,12 +138,12 @@ def processar(texto):
 
     # Ver tela
     if re.search(r"(?:veja|ver|olhe|olha|mostra|mostrar)\s+(?:a\s+)?(?:tela|monitor|display|screen)", text_low):
-        return "Permita-me observar a tela, Senhor.\n" + ver_tela(api_key=_get_api_key(), modelo=_get_model())
+        return "Permita-me observar a tela, Senhor.\n" + ver_tela(api_key=_get_api_key(), modelo=_get_vision_model())
 
     # Criar imagem
     m = re.match(r"(?:crie|cria|gerar|gere|crie uma|cria uma|fazer|faça)\s+(?:uma\s+)?imagem\s+(?:de\s+|sobre\s+)?(.+)", text_low)
     if m:
-        return criar_imagem(m.group(1).strip(), api_key=_get_api_key(), modelo=_get_model())
+        return criar_imagem(m.group(1).strip(), api_key=_get_api_key(), modelo=_get_vision_model())
 
     # Ajuda / Comandos
     if text_low in ("?", "ajuda", "comandos", "help", "o que voce faz", "o que voce sabe fazer"):

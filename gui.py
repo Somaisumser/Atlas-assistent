@@ -470,6 +470,15 @@ class AtlasApp(ctk.CTk):
                 "abra o discord no monitor 2",
                 "abrir spotify no segundo monitor",
             ]),
+            ("Abrir pasta / arquivo", [
+                "abra a pasta Documentos",
+                "abra o arquivo C:\\Docs\\notas.txt",
+            ]),
+            ("Energia do PC", [
+                "desligar computador",
+                "reiniciar computador",
+                "suspender o pc",
+            ]),
         ])
 
         aba_lembretes = tab.add("Lembretes")
@@ -515,6 +524,16 @@ class AtlasApp(ctk.CTk):
                 "crie um codigo em python para",
                 "crie um programa em java que",
             ]),
+            ("Ver tela", [
+                "veja a tela",
+                "olhe para o monitor",
+                "mostre o que esta na tela",
+            ]),
+            ("Criar imagem", [
+                "crie uma imagem de um gato",
+                "criar uma imagem sobre uma praia",
+                "gere uma imagem de um castelo",
+            ]),
         ])
 
         aba_voz = tab.add("Voz")
@@ -532,12 +551,25 @@ class AtlasApp(ctk.CTk):
                 "quais sao as vozes",
                 "listar vozes",
             ]),
+            ("Trocar motor de fala", [
+                "trocar motor de fala humano",
+                "trocar motor de fala padrao",
+                "qual o motor de fala",
+            ]),
         ])
 
         aba_dev = tab.add("Dev")
         _add_comandos(aba_dev, [
             ("Modificar codigo", [
                 "Use a aba Dev na GUI para modificar arquivos do Atlas",
+            ]),
+            ("Arquivos do Atlas", [
+                "arquivos codigo",
+                "listar arquivos codigo",
+            ]),
+            ("Ler arquivo de codigo", [
+                "leia arquivo gui.py",
+                "ver arquivo brain.py",
             ]),
         ])
 
@@ -860,12 +892,12 @@ class AtlasApp(ctk.CTk):
 
         # Ver tela
         if re.search(r"(?:veja|ver|olhe|olha|mostra|mostrar)\s+(?:a\s+)?(?:tela|monitor|display|screen)", text):
-            return "Permita-me observar a tela, Senhor.\n" + ver_tela(api_key=self._get_api_key(), modelo=self._get_modelo())
+            return "Permita-me observar a tela, Senhor.\n" + ver_tela(api_key=self._get_api_key(), modelo=self._get_vision_model())
 
         # Criar imagem
         m = re.match(r"(?:crie|cria|gerar|gere|crie uma|cria uma|fazer|faça)\s+(?:uma\s+)?imagem\s+(?:de\s+|sobre\s+)?(.+)", text)
         if m:
-            return criar_imagem(m.group(1).strip(), api_key=self._get_api_key(), modelo=self._get_modelo())
+            return criar_imagem(m.group(1).strip(), api_key=self._get_api_key(), modelo=self._get_vision_model())
 
         # Ajuda / Comandos
         if text in ("?", "ajuda", "comandos", "help", "o que voce faz", "o que voce sabe fazer"):
@@ -955,6 +987,48 @@ OUTROS:
         m = re.match(r"(?:delete|deleta|apague|remova|excluir|exclua|deletar|apagar|remover)\s+(.+)", text)
         if m:
             return "Removendo, Senhor.\n" + delete_file(m.group(1).strip())
+
+        # Trocar voz
+        m = re.match(r"(?:troca|trocar|muda|mudar|altera|alterar|coloca|colocar)\s+voz\s+(.+)", text)
+        if m:
+            nome = m.group(1).strip().title()
+            if nome in VOZES:
+                self.vozelecionada = nome
+                return f"Voz alterada para {nome}, Senhor."
+            return f"Peço desculpas, Senhor, mas a voz '{nome}' nao foi encontrada. Opcoes: {', '.join(VOZES.keys())}"
+
+        # Listar vozes
+        if re.search(r"(?:vozes?|listar\s+vozes?|quais\s+(?:as|são)\s+as\s+vozes?|opcoes?\s+de\s+voz)", text):
+            lista = "\n".join(f"- {nome}: {vid}" for nome, vid in VOZES.items())
+            return f"Vozes disponiveis, Senhor:\n{lista}"
+
+        # Velocidade da voz
+        m = re.match(r"(?:velocidade|veloc|rapido|lento|devagar|acelerar|desacelerar)\s+(?:da\s+)?voz\s+(\d+\.?\d*)", text)
+        if m:
+            vel = float(m.group(1))
+            if 0.5 <= vel <= 2.0:
+                self.velocidade_voz = vel
+                return f"Velocidade ajustada para {vel}x, Senhor."
+            return "A velocidade deve ser entre 0.5 e 2.0, Senhor."
+
+        # Trocar motor de fala
+        m = re.match(r"(?:troca|trocar|muda|mudar|altera|alterar|coloca|colocar|usa|usar)\s+(?:o\s+)?motor\s+(?:de\s+fala|de\s+voz|fala|voz)\s+(.+)", text)
+        if m:
+            escolha = m.group(1).strip().lower()
+            if escolha in ("padrao", "padrão", "edge", "padra"):
+                self._motor_tts = "edge"
+                configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model, self._motor_tts)
+                return "Motor de fala definido para o padrao (Edge TTS), Senhor. Natural e sem depender de API."
+            if escolha in ("humano", "humana", "gemini", "mais humano", "mais natural"):
+                self._motor_tts = "gemini"
+                configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model, self._motor_tts)
+                return "Motor de fala definido para o humano (Gemini TTS), Senhor. A conversa fica mais natural."
+            return "Motores de fala: 'padrao' (Edge TTS) ou 'humano' (Gemini TTS)."
+
+        # Consultar motor de fala
+        if re.search(r"(?:motor\s+(?:de\s+fala|de\s+voz|fala|voz)|qual\s+o\s+motor)", text):
+            nome = "padrao (Edge TTS)" if self._motor_tts == "edge" else "humano (Gemini TTS)"
+            return f"Motor de fala atual: {nome}, Senhor. Use 'trocar motor de fala humano' ou 'trocar motor de fala padrao'."
 
         return None
 
@@ -1052,8 +1126,8 @@ OUTROS:
             OLLAMA_HOST = host
 
     def _get_api_key(self):
-        """Retorna a API key do provider selecionado."""
-        if self._provider == "gemini":
+        """Retorna a API key Gemini sempre que disponivel (independente do provider de chat)."""
+        if self._gemini_key:
             return self._gemini_key
         return None
 
@@ -1062,6 +1136,13 @@ OUTROS:
         if self._provider == "gemini":
             return self._gemini_model
         return self.modelo_ollama
+
+    def _get_vision_model(self):
+        """Retorna um modelo Gemini valido para visao/imagem, independente do provider de chat."""
+        if self._provider == "gemini" and self._gemini_model:
+            return self._gemini_model
+        from brain import GEMINI_MODELS
+        return GEMINI_MODELS[0]
 
     def _on_provider_change(self):
         """Mostra/esconde configs baseado no provider selecionado."""
