@@ -21,9 +21,9 @@ PASSO 2: CRIAR REPOSITORIO
 
 PASSO 3: ENVIAR O ATLAS PARA O GITHUB
 ----------------------------------------
-Abra o terminal na pasta do Atlas:
+Abra o terminal na pasta do Atlas (onde os arquivos estao salvos):
 
-  cd "C:\Users\krato\Desktop\OpenCode codigos\Jarvis"
+  cd "CAMINHO\PARA\SUA\PASTA\DO\ATLAS"
 
 Execute esses comandos (UMA VEZ SO):
 

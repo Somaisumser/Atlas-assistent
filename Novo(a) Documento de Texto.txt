@@ -1,4 +1,0 @@
-@echo off
-cd "C:\Users\krato\Desktop\OpenCode codigos\Jarvis"
-python main.py
-pause
