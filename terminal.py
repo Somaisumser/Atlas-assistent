@@ -6,6 +6,7 @@ import re
 import sys
 import os
 import json
+import threading
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -93,7 +94,7 @@ def on_dynamic_voice(texto):
     resp = processar(texto)
     HISTORICO.append({"role": "assistant", "content": resp})
     print_colorido(f"\nAtlas: {resp}", "verde")
-    speak(resp, VOZ_ATUAL, VELOCIDADE)
+    threading.Thread(target=speak, args=(resp, VOZ_ATUAL, VELOCIDADE), daemon=True).start()
 
 
 def print_colorido(texto, cor="branco"):
@@ -373,7 +374,7 @@ def main():
         HISTORICO.append({"role": "assistant", "content": resp})
 
         print_colorido(f"\nAtlas: {resp}", "verde")
-        speak(resp, VOZ_ATUAL, VELOCIDADE)
+        threading.Thread(target=speak, args=(resp, VOZ_ATUAL, VELOCIDADE), daemon=True).start()
 
 
 if __name__ == "__main__":

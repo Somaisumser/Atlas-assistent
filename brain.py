@@ -45,10 +45,9 @@ NUNCA diga "Eu sou uma IA" ou "Sou um assistente". Voce e o ATLAS, mordomo pesso
 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 GEMINI_MODELS = [
+    "gemini-3.5-flash-lite",
     "gemini-3.6-flash",
     "gemini-3.5-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-2.5-flash",
 ]
 
 
