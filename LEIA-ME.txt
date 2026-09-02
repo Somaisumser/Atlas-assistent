@@ -1,12 +1,12 @@
 ============================================================
-     JARVIS - MORDOMO VIRTUAL PESSOAL
+     ATLAS - MORDOMO VIRTUAL PESSOAL
      Guia de Instalacao
 ============================================================
 
 
-O que e o Jarvis?
+O que e o Atlas?
 -----------------
-O Jarvis e um assistente pessoal com inteligencia artificial
+O Atlas e um assistente pessoal com inteligencia artificial
 que roda 100% no seu computador. Ele pode:
   - Abrir e fechar programas pela voz
   - Monitorar seu PC (CPU, RAM, disco, temperatura)
@@ -30,11 +30,11 @@ REQUISITOS
 ============================================================
 
 1. Clique duas vezes no arquivo:
-     "Instalar Jarvis.bat"
+     "Instalar Atlas.bat"
 
 2. Aguarde a instalacao concluir.
 
-3. Pronto! Clique em "Jarvis.bat" para usar.
+3. Pronto! Clique em "Atlas.bat" para usar.
 
 
 ============================================================
@@ -42,21 +42,21 @@ REQUISITOS
 ============================================================
 
 1. Clique com o botao direito no arquivo:
-     "Instalar Jarvis.ps1"
+     "Instalar Atlas.ps1"
 
 2. Selecione "Executar com o PowerShell".
    (Se pedir permissao, digite "S" e Enter)
 
 3. Aguarde a instalacao concluir.
 
-4. Pronto! Clique em "Jarvis.bat" para usar.
+4. Pronto! Clique em "Atlas.bat" para usar.
 
 
 ============================================================
   INSTALACAO (Metodo 3 - Manual)
 ============================================================
 
-1. Abra o terminal (cmd ou PowerShell) na pasta do Jarvis.
+1. Abra o terminal (cmd ou PowerShell) na pasta do Atlas.
 
 2. Execute os comandos:
 
@@ -75,7 +75,7 @@ REQUISITOS
   INSTALAR O OLLAMA (Obrigatorio)
 ============================================================
 
-O Jarvis precisa do Ollama para funcionar.
+O Atlas precisa do Ollama para funcionar.
 
 1. Acesse: https://ollama.com/download
 
@@ -87,7 +87,7 @@ O Jarvis precisa do Ollama para funcionar.
 4. Baixe um modelo (em outro terminal):
      ollama pull llama3.2
 
-5. Pronto! O Jarvis ja vai usar o modelo automaticamente.
+5. Pronto! O Atlas ja vai usar o modelo automaticamente.
 
 
 ============================================================
@@ -95,7 +95,7 @@ O Jarvis precisa do Ollama para funcionar.
 ============================================================
 
 GUI (Interface Grafica):
-  Clique duas vezes em "Jarvis.bat"
+  Clique duas vezes em "Atlas.bat"
   Ou rode: python main.py
 
 Terminal:
@@ -176,14 +176,14 @@ SOLUCAO: Rode no terminal:
 
 Para manter varios PCs sincronizados:
 
-1. Coloque o Jarvis no GitHub (veja GITHUB.txt).
+1. Coloque o Atlas no GitHub (veja GITHUB.txt).
 
 2. Sempre que fizer mudancas, rode:
      git add .
      git commit -m "minha mudanca"
      git push
 
-3. No outro PC, clique duas vezes em "atualizar.bat".
+3. No outro PC, clique duas vezes em "Atlas-atualizar.bat".
    Ou rode: git pull
 
 Cada PC mantem seus proprios lembretes e configuracoes.
@@ -193,7 +193,7 @@ Cada PC mantem seus proprios lembretes e configuracoes.
   ESTRUTURA DE ARQUIVOS
 ============================================================
 
-  Jarvis/
+  Atlas/
   |-- main.py              <- Ponto de entrada (GUI)
   |-- terminal.py          <- Interface de terminal
   |-- gui.py               <- Interface grafica
@@ -206,10 +206,11 @@ Cada PC mantem seus proprios lembretes e configuracoes.
   |-- reminders.py         <- Lembretes
   |-- developer.py         <- Modo desenvolvedor
   |-- requirements.txt     <- Dependencias
-  |-- Jarvis.bat           <- Atalho para iniciar
-  |-- Instalar Jarvis.bat  <- Instalador automatico
-  |-- Instalar Jarvis.ps1  <- Instalador PowerShell
-  |-- atualizar.bat        <- Atualiza pelo GitHub
+  |-- Atlas.bat           <- Atalho para iniciar
+  |-- Instalar Atlas.bat  <- Instalador automatico
+  |-- Instalar Atlas.ps1  <- Instalador PowerShell
+  |-- Atlas-atualizar.bat  <- Atualiza pelo GitHub
+  |-- Atlas-atualizar.ps1  <- Atualiza pelo GitHub (PowerShell)
   |-- atualizar.ps1        <- Atualiza pelo GitHub (PowerShell)
   |-- .gitignore           <- Arquivos ignorados pelo Git
   |-- GITHUB.txt           <- Como colocar no GitHub

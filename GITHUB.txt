@@ -1,5 +1,5 @@
 ============================================================
-  COMO COLOCAR O JARVIS NO GITHUB E ATUALIZAR EM OUTROS PC
+  COMO COLOCAR O ATLAS NO GITHUB E ATUALIZAR EM OUTROS PC
 ============================================================
 
 
@@ -14,14 +14,14 @@ PASSO 2: CRIAR REPOSITORIO
 -------------------------------
 1. No GitHub, clique no "+" (canto superior direito).
 2. Selecione "New repository".
-3. Nome: jarvis-assistant
+3. Nome: Atlas-assistent
 4. Selecione "Private" (privado).
 5. Clique em "Create repository".
 
 
-PASSO 3: ENVIAR O JARVIS PARA O GITHUB
+PASSO 3: ENVIAR O ATLAS PARA O GITHUB
 ----------------------------------------
-Abra o terminal na pasta do Jarvis:
+Abra o terminal na pasta do Atlas:
 
   cd "C:\Users\krato\Desktop\OpenCode codigos\Jarvis"
 
@@ -29,9 +29,9 @@ Execute esses comandos (UMA VEZ SO):
 
   git init
   git add .
-  git commit -m "Versao inicial do Jarvis"
+  git commit -m "Versao inicial do Atlas"
   git branch -M main
-  git remote add origin https://github.com/SEU-usuario/jarvis-assistant.git
+  git remote add origin https://github.com/SEU-usuario/Atlas-assistent.git
   git push -u origin main
 
 (Substitua SEU-usuario pelo seu nome de usuario do GitHub)
@@ -39,7 +39,7 @@ Execute esses comandos (UMA VEZ SO):
 
 PASSO 4: ATUALIZAR PELO GITHUB
 --------------------------------
-Sempre que fizer mudancas no Jarvis, rode:
+Sempre que fizer mudancas no Atlas, rode:
 
   git add .
   git commit -m "Descricao da mudanca"
@@ -49,7 +49,7 @@ No OUTRO PC, rode:
 
   git pull
 
-Ou clique duas vezes em "atualizar.bat".
+Ou clique duas vezes em "Atlas-atualizar.bat".
 
 
 PASSO 5: CLONAR EM OUTRO PC
@@ -58,9 +58,9 @@ No outro PC, instale o Git: https://git-scm.com/download/win
 
 Depois rode no terminal:
 
-  git clone https://github.com/SEU-usuario/jarvis-assistant.git
-  cd jarvis-assistant
-  "Instalar Jarvis.bat"
+  git clone https://github.com/SEU-usuario/Atlas-assistent.git
+  cd Atlas-assistent
+  "Instalar Atlas.bat"
 
 
 ============================================================
@@ -75,7 +75,7 @@ FAZER MUDANCAS:
 ATUALIZAR OUTRO PC:
   git pull
 
-OU: clique duas vezes em "atualizar.bat"
+OU: clique duas vezes em "Atlas-atualizar.bat"
 
 
 ============================================================

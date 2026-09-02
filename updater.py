@@ -12,7 +12,7 @@ import tempfile
 import shutil
 
 JARVIS_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_URL = "https://github.com/Somaisumser/jarvis-assistent/archive/refs/heads/main.zip"
+REPO_URL = "https://github.com/Somaisumser/Atlas-assistent/archive/refs/heads/main.zip"
 
 
 def _run_git(args):
@@ -79,7 +79,7 @@ def verificar_atualizacoes():
 
         # Pega ultimo commit remoto
         req = urllib.request.Request(
-            "https://api.github.com/repos/Somaisumser/jarvis-assistent/commits?sha=main&per_page=1",
+            "https://api.github.com/repos/Somaisumser/Atlas-assistent/commits?sha=main&per_page=1",
             headers={"User-Agent": "Atlas-Updater"}
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -144,17 +144,17 @@ def aplicar_atualizacao_zip():
                 tmp_lembretes = tmp.name
 
         # Baixa ZIP
-        tmp_zip = os.path.join(tempfile.gettempdir(), "jarvis-update.zip")
+        tmp_zip = os.path.join(tempfile.gettempdir(), "atlas-update.zip")
         urllib.request.urlretrieve(REPO_URL, tmp_zip)
 
         # Extrai
-        tmp_extract = os.path.join(tempfile.gettempdir(), "jarvis-update")
+        tmp_extract = os.path.join(tempfile.gettempdir(), "atlas-update")
         with zipfile.ZipFile(tmp_zip, 'r') as z:
             z.extractall(tmp_extract)
 
         # Copia arquivos (preserva venv, backups, lembretes)
         preserve = ["venv", "backups", "__pycache__", "lembretes.json"]
-        src = os.path.join(tmp_extract, "jarvis-assistent-main")
+        src = os.path.join(tmp_extract, "Atlas-assistent-main")
 
         for item in os.listdir(src):
             if item in preserve:

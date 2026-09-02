@@ -1,5 +1,5 @@
-# Jarvis - Instalador PowerShell
-# Rode: powershell -ExecutionPolicy Bypass -File instalar.ps1
+# Atlas - Instalador PowerShell
+# Rode: powershell -ExecutionPolicy Bypass -File "Instalar Atlas.ps1"
 
 $ErrorActionPreference = "Continue"
 $Pasta = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -7,7 +7,7 @@ Set-Location $Pasta
 
 Write-Host ""
 Write-Host "  ==========================================" -ForegroundColor Cyan
-Write-Host "       JARVIS - INSTALADOR AUTOMATICO" -ForegroundColor Cyan
+Write-Host "       ATLAS - INSTALADOR AUTOMATICO" -ForegroundColor Cyan
 Write-Host "       Mordomo Virtual Pessoal" -ForegroundColor Cyan
 Write-Host "  ==========================================" -ForegroundColor Cyan
 Write-Host ""
@@ -129,18 +129,18 @@ if (Get-Command "ollama" -ErrorAction SilentlyContinue) {
 # ═══════════════════════════════════════════
 # 5. CRIAR ATALHO
 # ═══════════════════════════════════════════
-Write-Host "[5/5] Criando Jarvis.bat..." -ForegroundColor Yellow
+Write-Host "[5/5] Criando Atlas.bat..." -ForegroundColor Yellow
 
 $batContent = @"
 @echo off
-title Jarvis - Mordomo Virtual
+title Atlas - Mordomo Virtual
 cd /d "%~dp0"
 venv\Scripts\python.exe main.py
 pause
 "@
 
-Set-Content -Path "Jarvis.bat" -Value $batContent -Encoding UTF8
-Write-Host "  Jarvis.bat criado!" -ForegroundColor Green
+Set-Content -Path "Atlas.bat" -Value $batContent -Encoding UTF8
+Write-Host "  Atlas.bat criado!" -ForegroundColor Green
 Write-Host ""
 
 # ═══════════════════════════════════════════
@@ -150,13 +150,13 @@ Write-Host "  ==========================================" -ForegroundColor Cyan
 Write-Host "       INSTALACAO CONCLUIDA!" -ForegroundColor Green
 Write-Host "  ==========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  Para usar o Jarvis:" -ForegroundColor White
-Write-Host "    1. Clique duas vezes em 'Jarvis.bat'" -ForegroundColor Green
+Write-Host "  Para usar o Atlas:" -ForegroundColor White
+Write-Host "    1. Clique duas vezes em 'Atlas.bat'" -ForegroundColor Green
 Write-Host "    2. Ou rode: python main.py" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Comandos de voz:" -ForegroundColor White
-Write-Host "    'Jarvis, abre o discord'" -ForegroundColor Gray
-Write-Host "    'Jarvis, monitorar pc'" -ForegroundColor Gray
-Write-Host "    'Jarvis, que horas sao'" -ForegroundColor Gray
+Write-Host "    'Atlas, abre o discord'" -ForegroundColor Gray
+Write-Host "    'Atlas, monitorar pc'" -ForegroundColor Gray
+Write-Host "    'Atlas, que horas sao'" -ForegroundColor Gray
 Write-Host ""
 Read-Host "Pressione Enter para fechar"

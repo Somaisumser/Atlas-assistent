@@ -1,5 +1,5 @@
 @echo off
-title Jarvis - Mordomo Virtual
+title Atlas - Mordomo Virtual
 cd /d "%~dp0"
 
 :: Cria um launcher VBS que esconde o CMD
@@ -7,7 +7,7 @@ cd /d "%~dp0"
     echo Set WshShell = CreateObject^("WScript.Shell"^)
     echo WshShell.CurrentDirectory = "%~dp0"
     echo WshShell.Run "venv\Scripts\python.exe main.py", 0, False
-) > "%TEMP%\jarvis_launch.vbs"
+) > "%TEMP%\atlas_launch.vbs"
 
-wscript "%TEMP%\jarvis_launch.vbs"
-del "%TEMP%\jarvis_launch.vbs" >nul 2>&1
+wscript "%TEMP%\atlas_launch.vbs"
+del "%TEMP%\atlas_launch.vbs" >nul 2>&1

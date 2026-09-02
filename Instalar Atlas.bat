@@ -1,11 +1,11 @@
 @echo off
-title Jarvis - Instalador
+title Atlas - Instalador
 color 0B
 cd /d "%~dp0"
 
 echo.
 echo =============================================
-echo      JARVIS - INSTALADOR AUTOMATICO
+echo      ATLAS - INSTALADOR AUTOMATICO
 echo      Mordomo Virtual Pessoal
 echo =============================================
 echo.
@@ -121,7 +121,7 @@ if %errorlevel% neq 0 (
     pip install pipwin --quiet
     pipwin install pyaudio
     if %errorlevel% neq 0 (
-        echo  [AVISO] PyAudio pode ter falhado. O Jarvis funciona sem voz.
+        echo  [AVISO] PyAudio pode ter falhado. O Atlas funciona sem voz.
         echo  Para instalar manualmente: pip install PyAudio
     )
 )
@@ -148,37 +148,37 @@ if %errorlevel%==0 (
     echo.
     echo  [AVISO] Ollama nao encontrado!
     echo.
-    echo  O Jarvis precisa do Ollama para funcionar.
+    echo  O Atlas precisa do Ollama para funcionar.
     echo  Baixe em: https://ollama.com/download
     echo.
     echo  Apos instalar, rode: ollama serve
     echo.
 )
 
-echo [5/5] Criando Jarvis.bat...
+echo [5/5] Criando Atlas.bat...
 
 (
     echo @echo off
-    echo title Jarvis - Mordomo Virtual
+    echo title Atlas - Mordomo Virtual
     echo cd /d "%%~dp0"
     echo venv\Scripts\python.exe main.py
     echo pause
-) > Jarvis.bat
+) > Atlas.bat
 
-echo         Jarvis.bat criado!
+echo         Atlas.bat criado!
 echo.
 
 echo =============================================
 echo        INSTALACAO CONCLUIDA!
 echo =============================================
 echo.
-echo  Para usar o Jarvis:
-echo    1. Clique duas vezes em "Jarvis.bat"
+echo  Para usar o Atlas:
+echo    1. Clique duas vezes em "Atlas.bat"
 echo    2. Ou rode: python main.py
 echo.
 echo  Comandos de voz:
-echo    "Jarvis, abre o discord"
-echo    "Jarvis, monitorar pc"
-echo    "Jarvis, que horas sao"
+echo    "Atlas, abre o discord"
+echo    "Atlas, monitorar pc"
+echo    "Atlas, que horas sao"
 echo.
 pause

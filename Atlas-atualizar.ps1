@@ -1,18 +1,18 @@
-# Jarvis - Atualizador PowerShell
-# Rode: powershell -ExecutionPolicy Bypass -File atualizar.ps1
+# Atlas - Atualizador PowerShell
+# Rode: powershell -ExecutionPolicy Bypass -File Atlas-atualizar.ps1
 
 $Pasta = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $Pasta
 
 Write-Host ""
 Write-Host "  ==========================================" -ForegroundColor Cyan
-Write-Host "       JARVIS - ATUALIZADOR" -ForegroundColor Cyan
+Write-Host "       ATLAS - ATUALIZADOR" -ForegroundColor Cyan
 Write-Host "  ==========================================" -ForegroundColor Cyan
 Write-Host ""
 
 if (-not (Test-Path ".git")) {
-    Write-Host "  [ERRO] Esta pasta nao e um repositorio Jarvis." -ForegroundColor Red
-    Write-Host "  Execute 'Instalar Jarvis.bat' primeiro." -ForegroundColor Yellow
+    Write-Host "  [ERRO] Esta pasta nao e um repositorio Atlas." -ForegroundColor Red
+    Write-Host "  Execute 'Instalar Atlas.bat' primeiro." -ForegroundColor Yellow
     Read-Host "Pressione Enter para sair"
     exit 1
 }
@@ -28,7 +28,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "       ATUALIZACAO CONCLUIDA!" -ForegroundColor Green
     Write-Host "  ==========================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "  Se houve atualizacoes, reinicie o Jarvis." -ForegroundColor White
+    Write-Host "  Se houve atualizacoes, reinicie o Atlas." -ForegroundColor White
 } else {
     Write-Host ""
     Write-Host "  [ERRO] Falha ao atualizar." -ForegroundColor Red
