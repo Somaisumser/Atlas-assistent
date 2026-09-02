@@ -51,6 +51,51 @@ GEMINI_MODELS = [
 ]
 
 
+def _post_com_retry(url, headers, json, timeout, tentativas=3, espera_base=2.0):
+    """Faz um POST re-testando em caso de erro de quota/taxa (429) ou servico (5xx).
+
+    Usa espera progressiva (backoff) para nao estourar a cota de novo.
+    Se a resposta indicar cota FREE bloqueada (limit: 0), abandona na hora.
+    """
+    import time as _time
+    ultimo = None
+    for i in range(tentativas):
+        try:
+            r = _session.post(url, headers=headers, json=json, timeout=timeout)
+            if r.status_code == 429 or (500 <= r.status_code < 600):
+                # Cota free-tier bloqueada (limit: 0) => retry nao adianta, falha logo
+                try:
+                    corpo = r.text.lower()
+                except Exception:
+                    corpo = ""
+                if "free_tier" in corpo and "limit: 0" in corpo:
+                    r.raise_for_status()
+                espera = espera_base * (i + 1)
+                late = r.headers.get("Retry-After")
+                try:
+                    if late:
+                        espera = max(espera, float(late))
+                except ValueError:
+                    pass
+                ultimo = r
+                if i < tentativas - 1:
+                    _time.sleep(espera)
+                    continue
+            r.raise_for_status()
+            return r
+        except requests.exceptions.RequestException as e:
+            ultimo = e
+            if i < tentativas - 1:
+                _time.sleep(espera_base * (i + 1))
+                continue
+            raise
+    if isinstance(ultimo, requests.exceptions.RequestException):
+        raise ultimo
+    if ultimo is not None:
+        ultimo.raise_for_status()
+    raise RuntimeError("Falha no POST apos retries")
+
+
 def _chat_ollama(mensagem, historico, modelo):
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     if historico:
@@ -158,7 +203,7 @@ def ver_tela(api_key: str, modelo: str = None) -> str:
         
         # Envia pra Gemini com visao
         url = f"{GEMINI_API_URL}/{modelo or GEMINI_MODELS[0]}:generateContent"
-        resp = _session.post(
+        resp = _post_com_retry(
             url,
             headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
             json={
@@ -182,46 +227,65 @@ def ver_tela(api_key: str, modelo: str = None) -> str:
         return f"Peço desculpas Senhor, mas nao consegui ver a tela: {e}"
 
 
+def _criar_imagem_pollinations(descricao: str, destino: str) -> str:
+    """Gera uma imagem gratuita usando a API Pollinations (sem chave, sem custo)."""
+    from pathlib import Path
+    from urllib.parse import quote
+    import random as _random
+
+    prompt = f"{descricao}, alta qualidade, detalhado"
+    url = ("https://image.pollinations.ai/prompt/"
+           f"{quote(prompt)}?width=512&height=512&nologo=true&seed={_random.randint(1, 99999)}")
+    resp = _session.get(url, timeout=90)
+    resp.raise_for_status()
+    img_bytes = resp.content
+    if not img_bytes:
+        return "Peço desculpas Senhor, mas nao consegui gerar a imagem no momento."
+
+    Path(destino).write_bytes(img_bytes)
+    return f"Imagem gerada com sucesso, Senhor. Salvei em: {destino}"
+
+
 def criar_imagem(descricao: str, api_key: str, modelo: str = None, destino: str = None) -> str:
-    """Gera uma imagem usando o Gemini (Nano Banana). Retorna o caminho do arquivo."""
-    if not api_key:
-        return "Preciso de uma API key do Gemini para criar imagens, Senhor."
+    """Gera uma imagem. Tenta Gemini (pago) e, se a cota free bloquear, usa o Pollinations (gratuito)."""
+    from pathlib import Path
+
+    if destino is None:
+        destino = str(Path.home() / "Desktop" / "imagem_gerada.png")
+
+    # Se houver chave Gemini, tenta primeiro (qualidade maxima quando disponivel)
+    if api_key:
+        try:
+            import base64 as _b64
+
+            modelo_img = modelo if modelo and "image" in modelo else "gemini-3.1-flash-lite-image"
+
+            url = f"{GEMINI_API_URL}/{modelo_img}:generateContent"
+            resp = _post_com_retry(
+                url,
+                headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+                json={
+                    "contents": [{"parts": [{"text": f"Crie uma imagem de: {descricao}"}]}],
+                    "generationConfig": {"temperature": 1.0, "maxOutputTokens": 8192},
+                },
+                timeout=90,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            img_bytes = None
+            for part in data["candidates"][0]["content"]["parts"]:
+                if "inlineData" in part:
+                    img_bytes = _b64.b64decode(part["inlineData"]["data"])
+                    break
+            if img_bytes is not None:
+                Path(destino).write_bytes(img_bytes)
+                return f"Imagem gerada com sucesso, Senhor. Salvei em: {destino}"
+        except Exception:
+            # Gemini indisponivel/limitado (free tier, 429, etc) -> cai para o gratuito
+            pass
+
+    # Fallback gratuito (Pollinations) - nao precisa de chave nem pagar
     try:
-        from pathlib import Path
-        import base64 as _b64
-        
-        # Modelo de imagem disponivel na conta (Nano Banana)
-        modelo_img = "gemini-3.1-flash-image"
-        
-        if destino is None:
-            destino = str(Path.home() / "Desktop" / "imagem_gerada.png")
-        
-        url = f"{GEMINI_API_URL}/{modelo_img}:generateContent"
-        resp = _session.post(
-            url,
-            headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-            json={
-                "contents": [{
-                    "parts": [{"text": f"Crie uma imagem de: {descricao}"}]
-                }],
-                "generationConfig": {"temperature": 1.0, "maxOutputTokens": 8192},
-            },
-            timeout=90,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        
-        # O Gemini retorna a imagem como base64 no campo inlineData
-        img_bytes = None
-        for part in data["candidates"][0]["content"]["parts"]:
-            if "inlineData" in part:
-                img_bytes = _b64.b64decode(part["inlineData"]["data"])
-                break
-        
-        if img_bytes is None:
-            return "Peço desculpas Senhor, mas o Gemini nao retornou uma imagem. Tente novamente."
-        
-        Path(destino).write_bytes(img_bytes)
-        return f"Imagem gerada com sucesso, Senhor. Salvei em: {destino}"
+        return _criar_imagem_pollinations(descricao, destino)
     except Exception as e:
         return f"Peço desculpas Senhor, mas nao consegui criar a imagem: {e}"

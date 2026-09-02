@@ -26,13 +26,14 @@ escuta_dinamica = None
 _provider = "ollama"
 _gemini_key = ""
 _gemini_model = "gemini-3.6-flash"
+_gemini_imagem_model = "gemini-3.1-flash-lite-image"
 _motor_voz = "google"
 _motor_tts = "edge"
 _config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 
 def _load_config():
-    global _provider, _gemini_key, _gemini_model, _motor_voz, _motor_tts
+    global _provider, _gemini_key, _gemini_model, _gemini_imagem_model, _motor_voz, _motor_tts
     try:
         if os.path.exists(_config_path):
             with open(_config_path, "r", encoding="utf-8") as f:
@@ -40,6 +41,7 @@ def _load_config():
             _provider = cfg.get("provider", _provider)
             _gemini_key = cfg.get("gemini_key", _gemini_key)
             _gemini_model = cfg.get("gemini_model", _gemini_model)
+            _gemini_imagem_model = cfg.get("gemini_imagem_model", _gemini_imagem_model)
             _motor_voz = cfg.get("motor_voz", _motor_voz)
             _motor_tts = cfg.get("motor_tts", _motor_tts)
     except Exception:
@@ -60,11 +62,18 @@ def _get_model():
 
 
 def _get_vision_model():
-    """Retorna um modelo Gemini valido para visao/imagem, independente do provider de chat."""
+    """Retorna um modelo Gemini valido para visao, independente do provider de chat."""
     if _provider == "gemini" and _gemini_model:
         return _gemini_model
     from brain import GEMINI_MODELS
     return GEMINI_MODELS[0]
+
+
+def _get_imagem_model():
+    """Retorna o modelo Gemini de geracao de imagem."""
+    if _gemini_imagem_model:
+        return _gemini_imagem_model
+    return "gemini-3.1-flash-lite-image"
 
 
 def _limpar_artigo(texto):
@@ -143,7 +152,7 @@ def processar(texto):
     # Criar imagem
     m = re.match(r"(?:crie|cria|gerar|gere|crie uma|cria uma|fazer|faça)\s+(?:uma\s+)?imagem\s+(?:de\s+|sobre\s+)?(.+)", text_low)
     if m:
-        return criar_imagem(m.group(1).strip(), api_key=_get_api_key(), modelo=_get_vision_model())
+        return criar_imagem(m.group(1).strip(), api_key=_get_api_key(), modelo=_get_imagem_model())
 
     # Ajuda / Comandos
     if text_low in ("?", "ajuda", "comandos", "help", "o que voce faz", "o que voce sabe fazer"):

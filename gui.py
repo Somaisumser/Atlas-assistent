@@ -8,6 +8,12 @@ import requests
 import json
 
 try:
+    from tkinterdnd2 import TkinterDnD
+    HAS_DND = True
+except Exception:
+    HAS_DND = False
+
+try:
     import pystray
     from PIL import Image, ImageDraw
     HAS_TRAY = True
@@ -83,6 +89,11 @@ class AtlasApp(ctk.CTk):
 
     def __init__(self):
         super().__init__()
+        if HAS_DND:
+            try:
+                TkinterDnD._require(self)
+            except Exception:
+                pass
         self.title("Atlas - Assistente Pessoal")
         self.geometry("750x900")
         self.minsize(600, 750)
@@ -97,6 +108,7 @@ class AtlasApp(ctk.CTk):
         self._provider = "ollama"
         self._gemini_key = ""
         self._gemini_model = "gemini-3.6-flash"
+        self._gemini_imagem_model = "gemini-3.1-flash-lite-image"
         self._motor_voz = "google"
         self._motor_tts = "edge"
         self._tema = {}
@@ -129,9 +141,13 @@ class AtlasApp(ctk.CTk):
         self.status = ctk.CTkLabel(self, text="Pronto", font=ctk.CTkFont(size=12), text_color=MUTED)
         self.status.pack(anchor="w", padx=20, pady=(5, 0))
 
-        self.chat = ctk.CTkTextbox(self, fg_color=PANEL, text_color=TEXT, font=ctk.CTkFont(size=13), wrap="word", border_width=1, border_color="#1a1a3a", corner_radius=12)
+        self.chat = ctk.CTkScrollableFrame(self, fg_color=PANEL, border_width=1, border_color="#1a1a3a", corner_radius=12)
         self.chat.pack(padx=15, pady=10, fill="both", expand=True)
-        self.chat.configure(state="disabled")
+        self.chat._parent_canvas.configure(highlightthickness=0)
+        self._imagens_chat = []  # guarda referencias para nao serem coletadas pelo GC
+        self.drop_hint = ctk.CTkLabel(self.chat, text="Arraste arquivos aqui para o Atlas ler", font=ctk.CTkFont(size=11), text_color=MUTED)
+        self.drop_hint.pack(pady=(80, 0))
+        self._configurar_drop(self.chat)
 
         input_card = ctk.CTkFrame(self, fg_color=PANEL, corner_radius=12)
         input_card.pack(fill="x", padx=15, pady=(0, 10))
@@ -497,6 +513,11 @@ class AtlasApp(ctk.CTk):
 
         aba_arquivos = tab.add("Arquivos")
         _add_comandos(aba_arquivos, [
+            ("Arrastar e soltar", [
+                "arraste qualquer .txt, .py, .md, .json, .csv etc para o chat",
+                "o Atlas le o arquivo e explica do que se trata",
+                "arraste uma imagem para exibi-la (nao analisada no plano gratuito)",
+            ]),
             ("Listar arquivos", [
                 "liste os arquivos em C:\\",
                 "mostrar pastas em Documentos",
@@ -510,6 +531,11 @@ class AtlasApp(ctk.CTk):
                 "delete notas.txt",
                 "apague lixo.txt",
                 "remover arquivo antigo",
+            ]),
+            ("Ler arquivo", [
+                "leia C:\\caminho\\arquivo.txt",
+                "leia o arquivo notas.txt",
+                "mostre o conteudo de config.json",
             ]),
         ])
 
@@ -533,6 +559,7 @@ class AtlasApp(ctk.CTk):
                 "crie uma imagem de um gato",
                 "criar uma imagem sobre uma praia",
                 "gere uma imagem de um castelo",
+                "a imagem aparece aqui no chat assim que pronta",
             ]),
         ])
 
@@ -739,13 +766,110 @@ class AtlasApp(ctk.CTk):
 
     def log(self, sender, text):
         def _inserir():
-            self.chat.configure(state="normal")
+            # remove o hint de drop na primeira mensagem de verdade
+            if getattr(self, "drop_hint", None) is not None:
+                try:
+                    self.drop_hint.destroy()
+                except Exception:
+                    pass
+                self.drop_hint = None
             prefix = "Voce" if sender == "user" else "Atlas"
             text_limpo = _strip_ansi(text)
-            self.chat.insert("end", f"{prefix}: {text_limpo}\n\n")
-            self.chat.configure(state="disabled")
-            self.chat.see("end")
+            cor = "#ffd54f" if sender == "user" else TEXT
+            msg = ctk.CTkLabel(self.chat, text=f"{prefix}: {text_limpo}", anchor="w", justify="left",
+                               wraplength=650, fg_color="transparent", text_color=cor,
+                               font=ctk.CTkFont(size=13))
+            msg.pack(fill="x", padx=6, pady=3)
+            # se a resposta do Atlas contem um caminho de imagem, exibe a imagem
+            if sender == "atlas":
+                self._exibir_imagem_da_resposta(text_limpo)
+            self.chat._parent_canvas.yview_moveto(1.0)
         self.after(0, _inserir)
+
+    def _exibir_imagem_da_resposta(self, resp):
+        """Se a resposta contem 'Salvei em: <caminho png/jpg>', mostra a imagem inline."""
+        m = re.search(r"Salvei em:\s*([^\s]+\.(?:png|jpe?g|gif|bmp|webp))", resp, re.IGNORECASE)
+        if not m:
+            return
+        caminho = m.group(1).strip().strip("'\"")
+        caminho = re.sub(r"([A-Za-z]:[\\/])", lambda mm: mm.group(1), caminho)
+        if not os.path.exists(caminho):
+            # talvez tenha escape de aspas/traco
+            caminho = caminho.replace("`", "")
+            if not os.path.exists(caminho):
+                return
+        imagens_chat = getattr(self, "_imagens_chat", None)
+        if imagens_chat is None:
+            imagens_chat = []
+            self._imagens_chat = imagens_chat
+        try:
+            from PIL import Image as PILImage
+            pil_img = PILImage.open(caminho)
+            # limite a 380px de largura para caber no chat
+            pil_img.thumbnail((380, 380))
+            ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=pil_img.size)
+            holder = ctk.CTkFrame(self.chat, fg_color="transparent")
+            holder.pack(anchor="w", padx=8, pady=4)
+            ctk.CTkLabel(self.chat, text=caminho, anchor="w", justify="left",
+                         text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=8)
+            lbl = ctk.CTkLabel(holder, image=ctk_img, text="", fg_color="#000000")
+            lbl.pack()
+            imagens_chat.append(ctk_img)
+            imagens_chat.append(lbl)
+            self.chat._parent_canvas.yview_moveto(1.0)
+        except Exception:
+            pass
+
+    def _configurar_drop(self, widget):
+        """Registra drag-and-drop de arquivos no chat."""
+        if not HAS_DND:
+            return
+        try:
+            widget.drop_target_register("DND_Files")
+            widget.dnd_bind("<<Drop>>", self._on_drop)
+        except Exception:
+            pass
+
+    def _on_drop(self, event):
+        """Recebe arquivos arrastados, le o conteudo e envia para o Atlas."""
+        files = self.tk.splitlist(event.data) if event.data else []
+        for caminho in files:
+            if os.path.isdir(caminho):
+                self.log("atlas", "Desculpe Senhor, mas nao posso ler uma pasta. Arraste arquivos individuais.")
+                continue
+            if self._anexar_arquivo(caminho):
+                self._set_status("Lendo arquivo...", ORANGE)
+
+    def _anexar_arquivo(self, caminho):
+        """Le um arquivo arrastado e o envia para o Atlas compreender."""
+        extensoes_texto = {".txt", ".md", ".py", ".js", ".ts", ".html", ".css", ".json", ".xml", ".csv", ".yml", ".yaml", ".ini", ".cfg", ".log", ".bat", ".ps1", ".c", ".cpp", ".java", ".go", ".rs", ".sql", ".sh", ".php", ".rb", ".pyw"}
+        ext = os.path.splitext(caminho)[1].lower()
+        nome = os.path.basename(caminho)
+
+        if ext in {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".ico"}:
+            self.log("user", f"[Imagem anexada: {nome}]")
+            self.log("atlas", f"Recebi a imagem {nome}. Lembre-se de que Sua conta Gemini gratuita nao me permite analisar imagens; mas se quiser, posso criar uma imagem nova para voce.")
+            self._set_status("Pronto")
+            return True
+
+        if ext not in extensoes_texto:
+            self.log("atlas", f"Desculpe Senhor, nao consigo ler esse tipo de arquivo ({ext or 'desconhecido'}). Associe-me apenas arquivos de texto ou planilhas.")
+            return False
+
+        try:
+            from file_manager import read_file as _ler
+            resp = _ler(caminho)
+            if "nao consegui ler o arquivo" in resp:
+                self._set_status("Erro ao ler arquivo", RED)
+                self.log("atlas", resp)
+                return False
+            msg = f"Este e o conteudo do arquivo {nome}. Analise-o e me explique do que se trata, em resumo:\n\n{resp}"
+            self.log("user", f"[Arquivo anexado: {nome}]")
+            threading.Thread(target=self._process, args=(msg,), daemon=True).start()
+            return True
+        except Exception as e:
+            self.log("atlas", f"Desculpe Senhor, nao consegui ler {nome}: {e}")
+            return False
 
     def _set_status(self, text, color=None):
         self.after(0, lambda: self.status.configure(text=text, text_color=color or MUTED))
@@ -897,7 +1021,7 @@ class AtlasApp(ctk.CTk):
         # Criar imagem
         m = re.match(r"(?:crie|cria|gerar|gere|crie uma|cria uma|fazer|faça)\s+(?:uma\s+)?imagem\s+(?:de\s+|sobre\s+)?(.+)", text)
         if m:
-            return criar_imagem(m.group(1).strip(), api_key=self._get_api_key(), modelo=self._get_vision_model())
+            return criar_imagem(m.group(1).strip(), api_key=self._get_api_key(), modelo=self._get_imagem_model())
 
         # Ajuda / Comandos
         if text in ("?", "ajuda", "comandos", "help", "o que voce faz", "o que voce sabe fazer"):
@@ -1138,11 +1262,17 @@ OUTROS:
         return self.modelo_ollama
 
     def _get_vision_model(self):
-        """Retorna um modelo Gemini valido para visao/imagem, independente do provider de chat."""
-        if self._provider == "gemini" and self._gemini_model:
+        """Retorna um modelo Gemini valido para visao, independente do provider de chat."""
+        if self._gemini_model and ("3.5" in self._gemini_model or "3.6" in self._gemini_model):
             return self._gemini_model
         from brain import GEMINI_MODELS
         return GEMINI_MODELS[0]
+
+    def _get_imagem_model(self):
+        """Retorna o modelo Gemini de geracao de imagem."""
+        if self._gemini_imagem_model:
+            return self._gemini_imagem_model
+        return "gemini-3.1-flash-lite-image"
 
     def _on_provider_change(self):
         """Mostra/esconde configs baseado no provider selecionado."""
@@ -1166,6 +1296,7 @@ OUTROS:
                 self._provider = cfg.get("provider", self._provider)
                 self._gemini_key = cfg.get("gemini_key", self._gemini_key)
                 self._gemini_model = cfg.get("gemini_model", self._gemini_model)
+                self._gemini_imagem_model = cfg.get("gemini_imagem_model", self._gemini_imagem_model)
                 self._motor_voz = cfg.get("motor_voz", self._motor_voz)
                 self._motor_tts = cfg.get("motor_tts", self._motor_tts)
                 self._tema = cfg.get("tema", {})
@@ -1184,6 +1315,7 @@ OUTROS:
                 "provider": self._provider,
                 "gemini_key": self._gemini_key,
                 "gemini_model": self._gemini_model,
+                "gemini_imagem_model": self._gemini_imagem_model,
                 "motor_voz": self._motor_voz,
                 "motor_tts": self._motor_tts,
                 "tema": {
