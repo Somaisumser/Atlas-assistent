@@ -1303,6 +1303,9 @@ OUTROS:
                 self._tema = cfg.get("tema", {})
                 # Aplica o motor de voz (ex: gemini) ao modulo de voz global
                 configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model, self._motor_tts)
+                # Se nao ha tema personalizado no config.json, usa o tema padrao do arquivo modelo (sincronizado no GitHub)
+                if not self._tema:
+                    self._tema = self._carregar_tema_padrao()
         except Exception:
             pass
 
@@ -1331,6 +1334,19 @@ OUTROS:
                 json.dump(cfg, f, ensure_ascii=False, indent=2)
         except Exception:
             pass
+
+    def _carregar_tema_padrao(self):
+        """Carrega o tema do arquivo modelo (tema_padrao.json) sincronizado no GitHub."""
+        try:
+            caminho = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tema_padrao.json")
+            if os.path.exists(caminho):
+                with open(caminho, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                tema = data.get("tema", {}) if isinstance(data.get("tema"), dict) else data
+                return {k: v for k, v in tema.items() if k in ("accent", "bg", "panel", "text", "intensidade")}
+        except Exception:
+            pass
+        return {}
 
     def _aplicar_tema(self):
         global BG, PANEL, ACCENT, ACCENT_DIM, TEXT, MUTED, GREEN, RED, ORANGE

@@ -190,6 +190,34 @@ Cada PC mantem seus proprios lembretes e configuracoes.
 
 
 ============================================================
+  TEMA PERSONALIZADO ENTRE PCS
+============================================================
+
+O tema (cores) que voce personaliza fica salvo no arquivo
+"config.json", que NAO vai para o GitHub (contem dados locais).
+
+Para levar seu tema a outra maquina:
+
+1. O arquivo "tema_padrao.json" (que VAI ao GitHub) contem
+   um modelo de tema seguro. Ao abrir o Atlas numa maquina
+   sem tema personalizado, ele usa esse modelo.
+
+2. Para editar o modelo (aplicar em todas as maquinas):
+   abra "tema_padrao.json" e altere as cores:
+     accent   -> cor de destaque
+     bg       -> fundo
+     panel    -> cor dos paineis
+     text     -> cor do texto
+     intensidade -> brilho (1.0 = normal)
+
+3. Na outra maquina, caso queira um tema DIFERENTE,
+   ajuste direto no menu "Tema" (engrenagem) ou edite o
+   "config.json" dessa maquina.
+
+IMPORTANTE: nunca coloque a chave da API no GitHub.
+
+
+============================================================
   ESTRUTURA DE ARQUIVOS
 ============================================================
 
@@ -206,6 +234,7 @@ Cada PC mantem seus proprios lembretes e configuracoes.
   |-- reminders.py         <- Lembretes
   |-- developer.py         <- Modo desenvolvedor
   |-- requirements.txt     <- Dependencias
+  |-- tema_padrao.json     <- Modelo de tema (seguro, vai ao GitHub)
   |-- Atlas.bat           <- Atalho para iniciar
   |-- Instalar Atlas.bat  <- Instalador automatico
   |-- Instalar Atlas.ps1  <- Instalador PowerShell
