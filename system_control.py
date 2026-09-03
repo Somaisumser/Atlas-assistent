@@ -7,6 +7,8 @@ import time
 import win32gui
 import win32con
 import glob as _glob
+import re
+import shutil
 
 SYSTEM = platform.system()
 
@@ -214,6 +216,144 @@ def _procurar_jogo_steam(nome: str) -> str | None:
     return None
 
 
+def _prefixos_palavra(nome_limpo: str, min_len: int = 3):
+    """Gera prefixos de palavras do nome para correspondencia parcial por prefixo."""
+    partes = re.split(r'[\s\-_]+', nome_limpo)
+    prefixos = set()
+    for parte in partes:
+        for i in range(min_len, len(parte) + 1):
+            prefixos.add(parte[:i])
+    return prefixos
+
+
+def _resolver_app_paths(nome: str):
+    """Resolve um nome de programa pelos App Paths do Windows (registro)."""
+    if SYSTEM != "Windows" or not nome:
+        return None
+    try:
+        import winreg
+        keys = [r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths",
+                r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths"]
+        alvo = nome if nome.lower().endswith(".exe") else nome + ".exe"
+        for k in keys:
+            try:
+                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, k + "\\" + alvo) as ch:
+                    r = winreg.QueryValueEx(ch, None)[0]
+                    caminho = r.split(",")[0].strip('"')
+                    if os.path.isfile(caminho):
+                        return caminho
+            except Exception:
+                continue
+            try:
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, k + "\\" + alvo) as ch:
+                    r = winreg.QueryValueEx(ch, None)[0]
+                    caminho = r.split(",")[0].strip('"')
+                    if os.path.isfile(caminho):
+                        return caminho
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return None
+
+
+def _buscar_programa_windows(nome: str):
+    """Procura um programa instalado no Windows pelo Menu Iniciar, Area de Trabalho e registro."""
+    if SYSTEM != "Windows":
+        return None
+    nome = nome.lower().strip()
+    nome_limpo = nome.replace(" ", "").replace("-", "").replace("_", "")
+
+    candidatos_exe = set()
+    diretorios_atalhos = [
+        os.path.join(os.environ.get("APPDATA", ""), "Microsoft", "Windows", "Start Menu", "Programs"),
+        os.path.join(os.environ.get("PROGRAMDATA", "C:\\ProgramData"), "Microsoft", "Windows", "Start Menu", "Programs"),
+        os.path.join(os.path.expanduser("~"), "Desktop"),
+        os.path.join(os.environ.get("PUBLIC", "C:\\Users\\Public"), "Desktop"),
+    ]
+
+    for pasta in diretorios_atalhos:
+        if not os.path.isdir(pasta):
+            continue
+        for raiz, _, arquivos in os.walk(pasta):
+            for arq in arquivos:
+                if not arq.lower().endswith((".lnk", ".url")):
+                    continue
+                base = os.path.splitext(arq)[0].lower()
+                base_limpo = base.replace(" ", "").replace("-", "").replace("_", "")
+                # Correspondencia estrita: nome contido, contem o nome, ou prefixo de palavra >= 3 letras
+                nomes_nome = set(base.split()) | set(base_limpo.split())
+                achou_nome = (nome in base or nome_limpo in base_limpo
+                              or base_limpo in nome_limpo
+                              or any(base_limpo.startswith(p) for p in _prefixos_palavra(nome_limpo)))
+                if not achou_nome:
+                    continue
+                atalho = os.path.join(raiz, arq)
+                caminho_exe = _resolver_atalho(atalho)
+                if caminho_exe and os.path.isfile(caminho_exe) and caminho_exe.lower().endswith(".exe"):
+                    nome_exe = os.path.basename(caminho_exe).lower().replace(" ", "").replace("-", "").replace(".exe", "").replace("_", "")
+                    if nome_limpo in nome_exe:
+                        return caminho_exe
+                    candidatos_exe.add(caminho_exe)
+
+    # Fallback: registro Uninstall do Windows (local e do usuario)
+    import winreg
+    chaves_reg = [
+        r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+        r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+    ]
+    for hkey in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+        for sub in chaves_reg:
+            try:
+                with winreg.OpenKey(hkey, sub) as chave:
+                    for i in range(0, winreg.QueryInfoKey(chave)[0]):
+                        try:
+                            with winreg.OpenKey(chave, winreg.EnumKey(chave, i)) as sub_chave:
+                                try:
+                                    exe = winreg.QueryValueEx(sub_chave, "DisplayIcon")[0]
+                                except Exception:
+                                    exe = ""
+                                if not exe:
+                                    continue
+                                caminho = exe.strip().strip('"')
+                                if caminho.startswith("{"):
+                                    continue
+                                caminho = caminho.split(",")[0]
+                                if not caminho.lower().endswith(".exe") or not os.path.isfile(caminho):
+                                    continue
+                                nome_exe = os.path.basename(caminho).lower().replace(" ", "").replace("-", "").replace(".exe", "").replace("_", "")
+                                if nome_limpo in nome_exe:
+                                    return caminho
+                        except Exception:
+                            continue
+            except Exception:
+                continue
+
+    if candidatos_exe:
+        return sorted(candidatos_exe)[0]
+    return None
+
+
+def _resolver_atalho(atalho: str):
+    """Extrai o caminho alvo de um atalho .lnk (via WScript.Shell) ou URL (.url)."""
+    try:
+        if atalho.lower().endswith(".url"):
+            with open(atalho, "r", encoding="utf-8", errors="ignore") as f:
+                for linha in f:
+                    if linha.strip().lower().startswith("url="):
+                        return linha.split("=", 1)[1].strip()
+            return None
+        ps = ("$s=(New-Object -ComObject WScript.Shell).CreateShortcut('%s');Write-Output $s.TargetPath" % atalho)
+        r = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True, timeout=8)
+        if r.returncode == 0:
+            alvo = r.stdout.strip()
+            if os.path.isfile(alvo):
+                return alvo
+    except Exception:
+        pass
+    return None
+
+
 def open_program(nome: str, monitor: int = None) -> str:
     """Abre um programa pelo nome, opcionalmente em um monitor especifico."""
     nome = nome.lower().strip()
@@ -354,13 +494,23 @@ def open_program(nome: str, monitor: int = None) -> str:
                 m = monitores[monitor - 1] if monitor <= len(monitores) else None
                 return random.choice(_ABRIR_VARIAÇÕES).format(nome=nome) + (f" no monitor {monitor}." if m else ".")
 
-        # Abre o programa
+        # Abre o programa (sem travar / sem janela extra)
         try:
             if caminho:
-                subprocess.Popen(f'start "" "{caminho}"', shell=True)
+                if os.path.isfile(caminho):
+                    subprocess.Popen([caminho], creationflags=subprocess.CREATE_NO_WINDOW)
+                else:
+                    subprocess.Popen(["cmd", "/c", "start", "", caminho], creationflags=subprocess.CREATE_NO_WINDOW)
             else:
                 if SYSTEM == "Windows":
-                    subprocess.Popen(f'start "" "{apps_path.get(nome, nome)}"', shell=True)
+                    alvo = apps_path.get(nome, nome)
+                    if nome not in apps_path:
+                        # Nome desconhecido: confirma que existe antes de abrir (evita 'abri' falso)
+                        exe_existente = shutil.which(alvo) or shutil.which(_resolver_app_paths(alvo))
+                        if not exe_existente:
+                            return f"Nao consegui encontrar '{nome}' neste computador."
+                    # 'start' resolve App Paths do Windows e retorna imediatamente (nao trava)
+                    subprocess.Popen(["cmd", "/c", "start", "", alvo], creationflags=subprocess.CREATE_NO_WINDOW)
                 elif SYSTEM == "Darwin":
                     subprocess.Popen(["open", "-a", nome])
                 else:
@@ -405,6 +555,15 @@ def open_program(nome: str, monitor: int = None) -> str:
     # Se deu certo (nao e erro), retorna
     if "Nao consegui" not in resultado and "desculpas" not in resultado.lower():
         return resultado
+
+    # Busca automatica pelo programa instalado (Menu Iniciar / area de trabalho / registro)
+    caminho_encontrado = _buscar_programa_windows(nome)
+    if caminho_encontrado:
+        try:
+            subprocess.Popen(f'start "" "{caminho_encontrado}"', shell=True)
+            return f"Achei {nome} instalado neste computador e o abri, Senhor. (" + caminho_encontrado + ")"
+        except Exception as e:
+            return f"Peço desculpas Senhor, mas nao consegui abrir {nome}. Erro: {e}"
 
     # Programa nao encontrado - da sugestoes
     programas_conhecidos = list(apps_path.keys()) + list(apps_caminho.keys())

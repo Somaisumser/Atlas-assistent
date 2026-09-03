@@ -476,6 +476,7 @@ class AtlasApp(ctk.CTk):
                 "abrir spotify",
                 "iniciar steam",
                 "quero abrir o chrome",
+                "o Atlas acha e abre qualquer programa instalado neste computador",
             ]),
             ("Fechar programa", [
                 "feche o discord",
