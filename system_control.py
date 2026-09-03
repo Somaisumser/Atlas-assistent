@@ -399,11 +399,6 @@ def open_program(nome: str, monitor: int = None) -> str:
             except Exception as e:
                 return f"Peço desculpas Senhor, mas nao consegui abrir a pasta {nome}. Erro: {e}"
 
-    # Procura jogos na pasta do Steam
-    resultado_steam = _procurar_jogo_steam(nome)
-    if resultado_steam:
-        return _abrir_e_mover(resultado_steam)
-
     # Mapeamento de nomes para janelas (titulo da janela)
     nomes_janela = {
         "discord": "Discord",
@@ -564,6 +559,11 @@ def open_program(nome: str, monitor: int = None) -> str:
             return f"Achei {nome} instalado neste computador e o abri, Senhor. (" + caminho_encontrado + ")"
         except Exception as e:
             return f"Peço desculpas Senhor, mas nao consegui abrir {nome}. Erro: {e}"
+
+    # Procura na pasta do Steam (abaixo: _abrir_e_mover ja esta definido)
+    resultado_steam = _procurar_jogo_steam(nome)
+    if resultado_steam:
+        return _abrir_e_mover(resultado_steam)
 
     # Programa nao encontrado - da sugestoes
     programas_conhecidos = list(apps_path.keys()) + list(apps_caminho.keys())
