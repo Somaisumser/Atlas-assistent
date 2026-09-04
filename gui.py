@@ -161,6 +161,8 @@ class AtlasApp(ctk.CTk):
         self.mic_btn.pack(side="left", padx=(0, 6))
         self.stop_btn = ctk.CTkButton(input_frame, text="Parar", width=60, height=42, corner_radius=10, fg_color=RED, hover_color="#cc3333", text_color=TEXT, font=ctk.CTkFont(size=12, weight="bold"), command=self._stop_all)
         self.stop_btn.pack(side="left", padx=(0, 6))
+        self.clear_btn = ctk.CTkButton(input_frame, text="Limpar", width=64, height=42, corner_radius=10, fg_color="#1a1a3a", hover_color="#3a3a5a", text_color=TEXT, font=ctk.CTkFont(size=12), command=self._limpar_chat)
+        self.clear_btn.pack(side="left", padx=(0, 6))
         self.listen_btn = ctk.CTkButton(input_frame, text="Escuta: OFF", width=90, height=42, corner_radius=10, fg_color="#1a1a3a", hover_color="#2a2a4a", text_color=MUTED, font=ctk.CTkFont(size=11), command=self._toggle_escuta_dinamica)
         self.listen_btn.pack(side="left")
 
@@ -901,6 +903,17 @@ class AtlasApp(ctk.CTk):
         self.after(0, lambda: self.stop_btn.configure(fg_color=RED))
         self._set_status("Interrompido", RED)
         self.after(2000, lambda: self._set_status("Pronto"))
+
+    def _limpar_chat(self):
+        """Limpa a conversa do chat (mensagens, imagens e historico)."""
+        def _limpar():
+            for w in self.chat.winfo_children():
+                w.destroy()
+            self._imagens_chat = []
+            self.historico = []
+            self.log("Atlas", "Conversa limpa, Senhor. Como posso ajuda-lo agora?")
+            self.chat._parent_canvas.yview_moveto(0.0)
+        self.after(0, _limpar)
 
     def _listen_flow(self):
         texto = listen()
