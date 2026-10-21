@@ -9,70 +9,55 @@ echo      ATLAS - ATUALIZADOR
 echo ==========================================
 echo.
 
+REM O Git e opcional: se nao estiver instalado, usamos o atualizador em
+REM PowerShell, que faz backup dos arquivos locais antes de sobrescrever.
+set "USAR_GIT=0"
 if exist ".git" (
-    where git >nul 2>&1
-    if %errorlevel%==0 (
-        echo  Verificando atualizacoes via Git...
-        echo.
-        git pull origin main
-        if %errorlevel%==0 (
-            echo.
-            echo  ATUALIZACAO CONCLUIDA!
-            echo  Reinicie o Atlas.
-            pause
-            exit /b 0
-        ) else (
-            echo  Git falhou. Tentando download...
-            echo.
-        )
-    )
+    where git >nul 2>&1 && set "USAR_GIT=1"
 )
 
-echo  Verificando atualizacoes...
-echo.
+if "%USAR_GIT%"=="1" goto via_git
+goto via_powershell
 
+:via_git
+echo  Verificando atualizacoes via Git...
+echo.
+git pull origin main
+if errorlevel 1 goto git_falhou
+echo.
+echo  ATUALIZACAO CONCLUIDA!
+echo  Reinicie o Atlas.
+pause
+exit /b 0
+
+:git_falhou
+echo.
+echo  [ERRO] O Git nao conseguiu atualizar.
+echo  Motivo comum: existem alteracoes locais ainda nao commitadas.
+echo  Use "git status" e depois "git add . ^&^& git commit -m mensagem".
+echo.
+echo  Suas alteracoes locais NAO foram apagadas.
+pause
+exit /b 1
+
+:via_powershell
+echo  Git nao encontrado. Usando o atualizador em PowerShell...
+echo.
 where powershell >nul 2>&1
-if %errorlevel% neq 0 (
-    echo  PowerShell nao encontrado.
+if errorlevel 1 (
+    echo  [ERRO] PowerShell nao encontrado.
     echo  Instale o Git: https://git-scm.com
     echo  Ou baixe manualmente: https://github.com/Somaisumser/Atlas-assistent
     pause
     exit /b 1
 )
 
-echo  Baixando ultima versao...
-echo.
-
-powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://github.com/Somaisumser/Atlas-assistent/archive/refs/heads/main.zip' -OutFile '%TEMP%\atlas-update.zip' -ErrorAction Stop; Write-Host 'OK' } catch { Write-Host 'ERRO' }" 2>nul | find /i "ERRO" >nul
-if %errorlevel%==0 (
-    echo  Falha ao baixar. Verifique sua internet.
+powershell -ExecutionPolicy Bypass -File "%~dp0Atlas-atualizar.ps1"
+if errorlevel 1 (
+    echo.
+    echo  [ERRO] Falha ao atualizar.
     pause
     exit /b 1
 )
 
-if exist "lembretes.json" copy "lembretes.json" "%TEMP%\atlas-lembretes.bak" >nul 2>&1
-
-echo  Instalando...
-echo.
-
-powershell -Command "try { Expand-Archive -Path '%TEMP%\atlas-update.zip' -DestinationPath '%TEMP%\atlas-update' -Force; Copy-Item -Path '%TEMP%\atlas-update\Atlas-assistent-main\*' -Destination '%~dp0' -Recurse -Force; Remove-Item -Path '%TEMP%\atlas-update' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -Path '%TEMP%\atlas-update.zip' -Force -ErrorAction SilentlyContinue; Write-Host 'OK' } catch { Write-Host 'ERRO' }" 2>nul | find /i "ERRO" >nul
-
-if exist "%TEMP%\atlas-lembretes.bak" (
-    copy "%TEMP%\atlas-lembretes.bak" "lembretes.json" >nul 2>&1
-    del "%TEMP%\atlas-lembretes.bak" >nul 2>&1
-)
-
-if exist "venv" (
-    echo  Atualizando dependencias...
-    call venv\Scripts\activate.bat
-    pip install -r requirements.txt --quiet 2>nul
-)
-
-echo.
-echo ==========================================
-echo      ATUALIZACAO CONCLUIDA!
-echo ==========================================
-echo.
-echo  Reinicie o Atlas.
-echo.
-pause
+exit /b 0

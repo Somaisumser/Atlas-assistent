@@ -127,7 +127,7 @@ Diga "Atlas" seguido do comando:
   falar            - Ativa o microfone para um comando
   escuta on        - Ativa escuta continua (ativa "Atlas")
   escuta off       - Desativa escuta continua
-  trocar voz ana   - Troca a voz para Ana
+  trocar voz Antonio - Troca a voz (tambem aceita "trocar voz para Antonio")
   velocidade voz 1.5 - Ajusta velocidade da fala
   arquivos codigo  - Lista arquivos do Atlas
   parar            - Interrompe a fala
@@ -225,6 +225,7 @@ SOLUCAO: Rode no terminal:
 Para manter varios PCs sincronizados:
 
 1. Coloque o Atlas no GitHub (veja GITHUB.txt).
+   O Git precisa estar instalado: https://git-scm.com
 
 2. Sempre que fizer mudancas, rode:
      git add .
@@ -233,6 +234,10 @@ Para manter varios PCs sincronizados:
 
 3. No outro PC, clique duas vezes em "Atlas-atualizar.bat".
    Ou rode: git pull
+
+O atualizador NUNCA apaga o seu trabalho: se houver arquivos alterados
+localmente, eles sao detectados, avisados e preservados (o Git recusa a
+mesclagem; sem Git, os arquivos sao copiados para "backup_local_<data>").
 
 Cada PC mantem seus proprios lembretes e configuracoes.
 
@@ -254,13 +259,13 @@ Cada PC mantem seus proprios lembretes e configuracoes.
   |-- code_runner.py       <- Execucao de codigo
   |-- reminders.py         <- Lembretes
   |-- developer.py         <- Modo desenvolvedor
+  |-- updater.py           <- Verifica e aplica atualizacoes
   |-- requirements.txt     <- Dependencias
   |-- Atlas.bat           <- Atalho para iniciar
   |-- Instalar Atlas.bat  <- Instalador automatico
   |-- Instalar Atlas.ps1  <- Instalador PowerShell
   |-- Atlas-atualizar.bat  <- Atualiza pelo GitHub
   |-- Atlas-atualizar.ps1  <- Atualiza pelo GitHub (PowerShell)
-  |-- atualizar.ps1        <- Atualiza pelo GitHub (PowerShell)
   |-- .gitignore           <- Arquivos ignorados pelo Git
   |-- GITHUB.txt           <- Como colocar no GitHub
   |-- LEIA-ME.txt          <- Este arquivo

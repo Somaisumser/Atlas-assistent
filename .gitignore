@@ -7,6 +7,7 @@ backup_*/
 lembretes.json
 config.json
 .last_update_hash
+.atlas_state.json
 *.mp3
 *.wav
 .env

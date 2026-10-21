@@ -117,7 +117,8 @@ Diga "Atlas" seguido do comando:
   "Atlas, cria um codigo em python para calcular fibonacci"
   "Atlas, lembra de beber agua em 30 minutos"
   "Atlas, lista os arquivos na area de trabalho"
-  "Atlas, abre o vs code no monitor 2"
+  "Atlas, abrir o vs code no monitor 2"
+  "Atlas, trocar voz para Antonio"
 
 
 ============================================================
@@ -127,7 +128,7 @@ Diga "Atlas" seguido do comando:
   falar            - Ativa o microfone para um comando
   escuta on        - Ativa escuta continua (ativa "Atlas")
   escuta off       - Desativa escuta continua
-  trocar voz ana   - Troca a voz para Ana
+  trocar voz Antonio - Troca a voz (tambem aceita "trocar voz para Antonio")
   velocidade voz 1.5 - Ajusta velocidade da fala
   arquivos codigo  - Lista arquivos do Atlas
   parar            - Interrompe a fala
@@ -234,6 +235,7 @@ SOLUCAO: Rode no terminal:
 Para manter varios PCs sincronizados:
 
 1. Coloque o Atlas no GitHub (veja GITHUB.txt).
+   O Git precisa estar instalado: https://git-scm.com
 
 2. Sempre que fizer mudancas, rode:
      git add .
@@ -242,6 +244,10 @@ Para manter varios PCs sincronizados:
 
 3. No outro PC, clique duas vezes em "Atlas-atualizar.bat".
    Ou rode: git pull
+
+O atualizador NUNCA apaga o seu trabalho: se houver arquivos alterados
+localmente, eles sao detectados, avisados e preservados (o Git recusa a
+mesclagem; sem Git, os arquivos sao copiados para "backup_local_<data>").
 
 Cada PC mantem seus proprios lembretes e configuracoes.
 
@@ -291,6 +297,7 @@ IMPORTANTE: nunca coloque a chave da API no GitHub.
   |-- code_runner.py       <- Execucao de codigo
   |-- reminders.py         <- Lembretes
   |-- developer.py         <- Modo desenvolvedor
+  |-- updater.py           <- Verifica e aplica atualizacoes
   |-- requirements.txt     <- Dependencias
   |-- tema_padrao.json     <- Modelo de tema (seguro, vai ao GitHub)
   |-- Atlas.bat           <- Atalho para iniciar
