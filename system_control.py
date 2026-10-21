@@ -626,6 +626,83 @@ def _pedir_para_fechar(hwnd):
         return False
 
 
+def _servico_do_pid(pid: int) -> str:
+    """Descobre o nome do servico do Windows que roda um PID.
+
+    Sem isso nao da para encerrar processos privilegiados: o GOG Galaxy,
+    por exemplo, roda o "GalaxyClientService" como servico do Windows, e um
+    usuario comum recebe "Acesso negado" ao tentar derruba-lo.
+    """
+    try:
+        r = subprocess.run(
+            ["tasklist", "/svc", "/FI", f"PID eq {pid}"],
+            capture_output=True, text=True, timeout=15,
+        )
+    except Exception:
+        return ""
+    for linha in (r.stdout or "").splitlines():
+        partes = linha.split()
+        # Formato: NOME_IMAGEM PID NOME_SERVICO...
+        if len(partes) >= 3 and partes[1] == str(pid):
+            return partes[2]
+    return ""
+
+
+def _parar_servico(nome_servico: str, timeout: int = 20) -> bool:
+    """Para um servico do Windows (sc stop). True se o servico parou."""
+    if not nome_servico:
+        return False
+    try:
+        r = subprocess.run(
+            ["sc", "stop", nome_servico],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except Exception:
+        return False
+    # sc devolve 1062 (servico ja parado) ou 1052 (nao controlavel):
+    # nos dois casos o servico NAO esta rodando, entao o objetivo foi cumprido.
+    texto = (r.stdout or "") + (r.stderr or "")
+    if "1062" in texto or "nao esta iniciado" in texto.lower():
+        return True
+    return r.returncode == 0
+
+
+def _encerrar_processo(proc) -> tuple:
+    """Encerra um processo. Devolve (ok, motivo).
+
+    O motivo e "privilegiado" quando o processo roda como servico do Windows
+    e o usuario nao tem permissao para derruba-lo.
+    """
+    try:
+        proc.terminate()
+        try:
+            proc.wait(timeout=4)
+        except (psutil.TimeoutExpired, psutil.AccessDenied, psutil.NoSuchProcess):
+            pass
+        return True, ""
+    except psutil.AccessDenied:
+        # Processo elevado (servico do Windows): tenta parar o servico.
+        nome_servico = _servico_do_pid(proc.pid)
+        if nome_servico and _parar_servico(nome_servico):
+            try:
+                proc.wait(timeout=6)
+            except (psutil.TimeoutExpired, psutil.AccessDenied, psutil.NoSuchProcess):
+                pass
+            # Confere se o processo realmente saiu.
+            for _ in range(10):
+                if not psutil.pid_exists(proc.pid):
+                    break
+                time.sleep(0.5)
+            if not psutil.pid_exists(proc.pid):
+                return True, ""
+            return False, "privilegiado"
+        return False, "privilegiado"
+    except psutil.NoSuchProcess:
+        return True, ""
+    except Exception:
+        return False, "erro"
+
+
 def _bate_processo(alvo: str, nome: str, caminho: str, titulo: str) -> bool:
     """Compara o pedido do Senhor com nome, caminho e janela do processo.
 
@@ -651,12 +728,59 @@ def _bate_processo(alvo: str, nome: str, caminho: str, titulo: str) -> bool:
     return False
 
 
+def _processos_que_casam(nomes_para_buscar, incluir_filhos=True):
+    """Lista os processos que casam com o pedido do Senhor.
+
+    Devolve uma lista de (processo, janela). Os filhos dos processos
+    casados entram junto: e assim que o GOG Galaxy cria o "GOG Galaxy
+    Notifications Renderer" e o Chrome cria o crash handler, que ficariam
+    de fora se so procurassemos pelo nome.
+    """
+    janelas = _janelas_por_pid()
+    alvos = []
+    vistos = set()
+
+    for proc in psutil.process_iter(["name", "exe", "pid"]):
+        try:
+            info = proc.info
+            janela = janelas.get(info["pid"], {})
+            if any(_bate_processo(n, info["name"], info.get("exe"), janela.get("titulo"))
+                   for n in nomes_para_buscar):
+                alvos.append((proc, janela))
+                vistos.add(info["pid"])
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+
+    if not incluir_filhos:
+        return alvos
+
+    for proc, _ in list(alvos):
+        try:
+            filhos = proc.children(recursive=True)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+        for filho in filhos:
+            if filho.pid in vistos:
+                continue
+            try:
+                janela = janelas.get(filho.pid, {})
+                if not any(_bate_processo(n, filho.name(), filho.exe(), janela.get("titulo"))
+                           for n in nomes_para_buscar):
+                    alvos.append((filho, janela))
+                vistos.add(filho.pid)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+            except Exception:
+                continue
+
+    return alvos
+
+
 def close_program(nome: str) -> str:
     """Fecha um programa pelo nome."""
     nome = nome.lower().strip()
     if not nome:
         return "Senhor, qual programa devo encerrar?"
-    fechou = False
 
     # Mapeamento de nomes para processos
     nomes_processo = {
@@ -669,8 +793,9 @@ def close_program(nome: str) -> str:
         "steam": ["steam", "steam.exe"],
         "vs code": ["code", "code.exe"],
         "code": ["code", "code.exe"],
-        "gog galaxy": ["galaxyclient", "galaxy"],
-        "galaxy": ["galaxyclient"],
+        "gog galaxy": ["galaxyclient", "galaxyclientservice", "galaxycommunication",
+                       "galaxyupdater", "gog galaxy notifications renderer", "galaxy"],
+        "galaxy": ["galaxyclient", "galaxyclientservice", "galaxy"],
         "calculadora": ["calc"],
         "bloco de notas": ["notepad"],
     }
@@ -679,36 +804,91 @@ def close_program(nome: str) -> str:
     if nome not in nomes_para_buscar:
         nomes_para_buscar.append(nome)
 
-    janelas = _janelas_por_pid()
-    alvos = []
-    for proc in psutil.process_iter(["name", "exe", "pid"]):
-        try:
-            info = proc.info
-            janela = janelas.get(info["pid"], {})
-            if any(_bate_processo(n, info["name"], info.get("exe"), janela.get("titulo"))
-                   for n in nomes_para_buscar):
-                alvos.append((proc, janela))
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
+    fechou = False
+    nao_poude = []
 
-    for proc, janela in alvos:
-        try:
-            # Primeiro pede para encerrar, para o programa guardar o que
-            # estiver aberto (sessao, documento, download).
-            if janela.get("hwnd") and _pedir_para_fechar(janela["hwnd"]):
-                try:
-                    proc.wait(timeout=4)
-                    fechou = True
-                    continue
-                except psutil.TimeoutExpired:
-                    pass  # Ignorou o pedido; derruba mesmo assim.
-            proc.terminate()
+    # Algumas aplicacoes sobem processos auxiliares DEPOIS de iniciadas
+    # (o GOG Galaxy cria o "Notifications Renderer" alguns segundos depois
+    # do cliente). Por isso a busca e refeita varias vezes, ate que nada
+    # mais cassar com o pedido do Senhor.
+    for _passada in range(4):
+        alvos = _processos_que_casam(nomes_para_buscar)
+        if not alvos:
+            break
+
+        # 1) Primeiro os que tem janela: o pedido educado (WM_CLOSE) faz o
+        #    programa salvar o que estiver aberto antes de sair.
+        com_janela = [a for a in alvos if a[1].get("hwnd")]
+
+        for _proc, janela in com_janela:
+            try:
+                _pedir_para_fechar(janela["hwnd"])
+            except Exception:
+                pass
+
+        # 2) Da um tempo para o programa encerrar sozinho depois do WM_CLOSE.
+        fim = time.time() + 3
+        for proc, _ in com_janela:
+            restante = fim - time.time()
+            if restante <= 0:
+                break
+            try:
+                proc.wait(timeout=restante)
+                # Encerrou sozinho apos o pedido educado.
+                fechou = True
+            except psutil.NoSuchProcess:
+                fechou = True
+            except (psutil.TimeoutExpired, psutil.AccessDenied):
+                pass
+
+        # 3) Sobrou algum? Encerra na marra.
+        restantes = []
+        for proc, _ in alvos:
+            try:
+                if proc.is_running():
+                    restantes.append(proc)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+            except Exception:
+                continue
+
+        if not restantes:
+            # Encontramos o programa e agora nao ha mais nada de pe.
             fechou = True
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
+            break
+
+        for proc in restantes:
+            ok, _motivo = _encerrar_processo(proc)
+            if ok:
+                fechou = True
+            else:
+                nome_proc = ""
+                try:
+                    nome_proc = proc.info.get("name") or ""
+                except Exception:
+                    pass
+                nao_poude.append(nome_proc or "desconhecido")
+
+        # 4) Confere se ainda ha algo de pe antes de desistir.
+        time.sleep(1.5)
+        if not _processos_que_casam(nomes_para_buscar):
+            break
+
+    if nao_poude:
+        # Sobrou processo protegido. O Atlas precisa avisar, senao o Senhor
+        # ve o icone na bandeja e pensa que nada foi fechado.
+        if fechou:
+            return (f"Fechei {nome}, Senhor, mas um processo protegido ficou "
+                    f"rodando ({', '.join(nao_poude)}). Ele roda como servico "
+                    f"do Windows e precisa de permissao de administrador para "
+                    f"encerrar.")
+        return (f"Senhor, nao consegui encerrar {nome}: "
+                f"{', '.join(nao_poude)} roda como servico do Windows e "
+                f"precisa de permissao de administrador.")
 
     if fechou:
         return random.choice(_FECHAR_VARIAÇÕES).format(nome=nome)
+
     return f"Senhor, nao encontrei {nome} em execucao."
 
 

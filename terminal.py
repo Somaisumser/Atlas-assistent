@@ -227,7 +227,7 @@ OUTROS:
         return open_program(_limpar_artigo(nome_limpo.strip()), monitor=monitor)
 
     # Fechar programa
-    m = re.match(r"(?:feche|fechar|fecha|mate|matar|encerrar|encerre|fechar o|fechar a)\s+(.+)", text_low)
+    m = re.match(r"(?:feche|fechar|fecha|mate|mata|matar|encerra|encerrar|encerre|fechar o|fechar a)\s+(.+)", text_low)
     if m:
         return close_program(_limpar_artigo(m.group(1)))
 

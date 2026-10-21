@@ -1184,7 +1184,7 @@ OUTROS:
             # Remove conectivos comuns no inicio
             nome_limpo = re.sub(r"^(?:o|a|os|as|um|uma|o\s+|a\s+)", "", nome_limpo, flags=re.IGNORECASE)
             return open_program(self._limpar_artigo(nome_limpo.strip()), monitor=monitor)
-        m = re.match(r"(?:feche|fechar|fecha|mate|matar|encerrar|encerre|fechar o|fechar a)\s+(.+)", text)
+        m = re.match(r"(?:feche|fechar|fecha|mate|mata|matar|encerra|encerrar|encerre|fechar o|fechar a)\s+(.+)", text)
         if m:
             return close_program(self._limpar_artigo(m.group(1)))
 

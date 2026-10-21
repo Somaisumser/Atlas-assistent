@@ -136,6 +136,7 @@ Diga "Atlas" seguido do comando:
   "Atlas, abre o discord"
   "Atlas, abre o spotify no segundo monitor"
   "Atlas, fecha o chrome"
+  "Atlas, fecha o gog galaxy"
   "Atlas, monitorar pc"
   "Atlas, que horas sao"
   "Atlas, pesquisar na internet por receitas"
@@ -143,6 +144,9 @@ Diga "Atlas" seguido do comando:
   "Atlas, lembra de beber agua em 30 minutos"
   "Atlas, lista os arquivos na area de trabalho"
   "Atlas, abre o vs code no monitor 2"
+
+Para FECHAR um programa, o Atlas entende: fecha, feche, fechar,
+encerra, encerrar, mate, mata, matar.
 
 
 ============================================================
@@ -237,6 +241,19 @@ SOLUCAO: A chave expirou ou foi digitada errada. Gere outra em
 
 PROBLEMA: "Nao consegui abrir [programa]"
 SOLUCAO: Verifique se o programa esta instalado.
+
+PROBLEMA: "Fechei [programa], mas um processo protegido ficou rodando"
+SOLUCAO: Alguns programas (o GOG Galaxy e um exemplo) sobem um servico
+         do Windows que roda com permissao de administrador. O Atlas ja
+         tenta parar esse servico sozinho; se ainda assim sobrar
+         alguma coisa, rode o Atlas como administrador (clique com o
+         botao direito no "Atlas.bat" e escolha "Executar como
+         administrador").
+
+PROBLEMA: O GOG Galaxy continua na bandeja depois do "fecha"
+SOLUCAO: Deve ser o caso acima (servico protegido). Se o problema
+         persistir, feche o GOG Galaxy pelo proprio menu da bandeja
+         (clique direito no icone > Sair) e reinicie o Atlas.
 
 PROBLEMA: Microfone nao funciona
 SOLUCAO: Verifique as permissoes de microfone nas
