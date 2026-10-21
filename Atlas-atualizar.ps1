@@ -87,14 +87,33 @@ if (-not (Test-Path $Src)) {
     exit 1
 }
 
+# Estado salvo na ultima verificacao (mapa arquivo -> sha256)
+$Estado = $null
+if (Test-Path ".atlas_state.json") {
+    try {
+        $Estado = (Get-Content ".atlas_state.json" -Raw -Encoding UTF8 | ConvertFrom-Json).arquivos
+    } catch { $Estado = $null }
+}
+
+function Get-HashArquivo($Caminho) {
+    if (-not (Test-Path $Caminho)) { return "" }
+    return (Get-FileHash $Caminho -Algorithm SHA256).Hash.ToLower()
+}
+
 # Backup dos arquivos do projeto antes de qualquer sobrescrita
 $Stamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $Backup = Join-Path $Pasta "backup_local_$Stamp"
 New-Item -ItemType Directory -Path $Backup -Force | Out-Null
-Get-ChildItem -Path $Pasta -File -Include *.py,*.json,*.md,*.txt,*.bat,*.ps1 |
-    Where-Object { $_.Name -notin @("config.json", "lembretes.json", ".atlas_state.json", ".last_update_hash") } |
-    ForEach-Object { Copy-Item $_.FullName (Join-Path $Backup $_.Name) -Force }
-Write-Host "  Backup dos arquivos locais salvo em: backup_local_$Stamp" -ForegroundColor Green
+$Extensoes = @(".py", ".json", ".md", ".txt", ".bat", ".ps1")
+$ProtegidosBackup = @("config.json", "lembretes.json", ".atlas_state.json", ".last_update_hash")
+$copiadosBackup = 0
+Get-ChildItem -Path $Pasta -File | ForEach-Object {
+    if ($_.Extension -notin $Extensoes) { return }
+    if ($_.Name -in $ProtegidosBackup) { return }
+    Copy-Item $_.FullName (Join-Path $Backup $_.Name) -Force
+    $copiadosBackup++
+}
+Write-Host "  Backup de $copiadosBackup arquivo(s) locais salvo em: backup_local_$Stamp" -ForegroundColor Green
 Write-Host ""
 
 $copiados = 0
@@ -103,23 +122,27 @@ Get-ChildItem -Path $Src | ForEach-Object {
     $item = $_.Name
     $destino = Join-Path $Pasta $item
     if ($item -in $Protegidos -or $item.StartsWith("backup_")) { return }
+    if ($item -in @("config.json", "lembretes.json")) { return }
 
-    if ($item -eq "config.json" -or $item -eq "lembretes.json") { return }
-
-    if (Test-Path $destino) {
-        $local = Get-Item $destino
-        if ($local.PSIsContainer) {
-            Remove-Item $destino -Recurse -Force -ErrorAction SilentlyContinue
-            Copy-Item $_.FullName $destino -Recurse -Force
-        } else {
-            # Arquivo que ja existe e foi alterado localmente: preserva
-            if ($local.LastWriteTime -gt (Get-Date).AddDays(-30)) {
-                $preservados += $item
-                return
-            }
-            Copy-Item $_.FullName $destino -Force
+    if (Test-Path $destino -PathType Leaf) {
+        $hashLocal = Get-HashArquivo $destino
+        $hashNovo = Get-HashArquivo $_.FullName
+        $hashConhecido = $null
+        if ($Estado -and $Estado.PSObject.Properties.Name -contains $item) {
+            $hashConhecido = $Estado.$item
         }
-    } else {
+        # O arquivo foi alterado localmente: preserva a versao do usuario
+        if ($hashLocal -ne $hashNovo -and ($hashConhecido -eq $null -or $hashConhecido -ne $hashLocal)) {
+            $preservados += $item
+            return
+        }
+        Copy-Item $_.FullName $destino -Force
+    }
+    elseif (Test-Path $destino) {
+        Remove-Item $destino -Recurse -Force -ErrorAction SilentlyContinue
+        Copy-Item $_.FullName $destino -Recurse -Force
+    }
+    else {
         Copy-Item $_.FullName $destino -Recurse -Force
     }
     $copiados++
