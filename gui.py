@@ -25,7 +25,8 @@ def _strip_ansi(texto):
     """Remove codigos ANSI de cores para exibicao na GUI."""
     return re.sub(r'\033\[[0-9;]*m', '', texto)
 
-from brain import chat, chat_com_ferramentas, responder_com_fontes, ver_tela, criar_imagem, GEMINI_MODELS
+from brain import (chat, chat_com_ferramentas, responder_com_fontes, ver_tela, criar_imagem,
+                   GEMINI_MODELS, listar_modelos, definir_host, eh_nuvem, HOST_NUVEM)
 from voice import listen, speak, stop_speak, VOZES, EscutaDinamica, configurar_motor_voz, MOTORES_FALA, extrair_nome_voz
 from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala, desligar_computador, reiniciar_computador, suspender_computador, open_folder, open_file
 from file_manager import list_dir, read_file, create_file, delete_file
@@ -43,33 +44,26 @@ ctk.set_default_color_theme("blue")
 
 OLLAMA_HOST = "http://localhost:11434"
 
+# Fontes de modelos do Ollama
+FONTES_MODELO = {
+    "ambos": "Local + Nuvem",
+    "local": "Somente Local",
+    "nuvem": "Somente Nuvem (Ollama Cloud)",
+}
 
-def obter_modelos_ollama():
-    """Busca modelos instalados no Ollama com detalhes."""
-    try:
-        r = requests.get(f"{OLLAMA_HOST}/api/tags", timeout=5)
-        if r.status_code == 200:
-            modelos = []
-            for m in r.json().get("models", []):
-                nome = m.get("name", "")
-                tamanho = m.get("size", 0)
-                tamanho_gb = round(tamanho / (1024**3), 1)
-                detalhes = m.get("details", {})
-                params = detalhes.get("parameter_size", "?")
-                quant = detalhes.get("quantization_level", "?")
-                familias = detalhes.get("family", "?")
-                modelos.append({
-                    "nome": nome,
-                    "tamanho_gb": tamanho_gb,
-                    "parametros": params,
-                    "quantizacao": quant,
-                    "familia": familias,
-                    "display": f"{nome}  ({tamanho_gb}GB, {params}, {quant})"
-                })
-            return modelos
-    except:
-        pass
-    return []
+
+def obter_modelos_ollama(fonte="ambos", api_key=""):
+    """Busca modelos do Ollama local e/ou do Ollama Cloud (ollama.com).
+
+    `fonte`: "ambos", "local" ou "nuvem".
+    Os modelos da nuvem voltam marcados com "fonte": "nuvem".
+    """
+    modelos = []
+    if fonte in ("ambos", "local"):
+        modelos += listar_modelos(OLLAMA_HOST)
+    if fonte in ("ambos", "nuvem"):
+        modelos += listar_modelos(HOST_NUVEM, api_key)
+    return modelos
 
 BG = "#0a0a1a"
 PANEL = "#12122a"
@@ -105,6 +99,17 @@ class AtlasApp(ctk.CTk):
         self.vozelecionada = "Antonio"
         self.velocidade_voz = 1.0
         self.modelo_ollama = "llama3.2"
+        # De onde vem o modelo escolhido: "local" (servidor do usuario) ou
+        # "nuvem" (Ollama Cloud em ollama.com).
+        self._modelo_fonte = "local"
+        # Host em que o modelo escolhido foi encontrado.
+        self._modelo_host = "http://localhost:11434"
+        # Servidor Ollama local configurado pelo usuario.
+        self._host_ollama = "http://localhost:11434"
+        # Chave do Ollama Cloud (necessaria so para conversar com a nuvem).
+        self._ollama_cloud_key = ""
+        # De onde buscar a lista de modelos: "ambos", "local" ou "nuvem".
+        self._fonte_modelos = "ambos"
         self.escuta_dinamica = None
         self._provider = "ollama"
         self._gemini_key = ""
@@ -193,7 +198,7 @@ class AtlasApp(ctk.CTk):
     def _open_settings(self):
         win = ctk.CTkToplevel(self)
         win.title("Configuracoes")
-        win.geometry("480x560")
+        win.geometry("500x700")
         win.configure(fg_color=BG)
         win.grab_set()
         tab = ctk.CTkTabview(win, fg_color=PANEL, segmented_button_fg_color=BG, segmented_button_selected_color=ACCENT, segmented_button_unselected_color=PANEL, text_color=TEXT, corner_radius=10)
@@ -256,6 +261,10 @@ class AtlasApp(ctk.CTk):
 
         self._model_var = ctk.StringVar(value="llama3.2")
         self._modelos_info = {}
+        # Estado da busca de modelos (a thread de fundo escreve, a thread
+        # principal le e atualiza a interface).
+        self._modelos_buscando = False
+        self._modelos_resultado = None
 
         model_frame = ctk.CTkFrame(self._box_ollama, fg_color="transparent")
         model_frame.pack(fill="x", padx=(20, 12), pady=(0, 8))
@@ -263,7 +272,7 @@ class AtlasApp(ctk.CTk):
         self._model_combo = ctk.CTkOptionMenu(
             model_frame, values=["Carregando..."], variable=self._model_var,
             fg_color=PANEL, button_color="#1a1a3a", button_hover_color=ACCENT, text_color=TEXT,
-            width=280, font=ctk.CTkFont(size=12)
+            width=280, font=ctk.CTkFont(size=12), command=self._on_modelo_mudou
         )
         self._model_combo.pack(side="left", fill="x", expand=True)
 
@@ -283,9 +292,37 @@ class AtlasApp(ctk.CTk):
 
         box_host = ctk.CTkFrame(self._box_ollama, fg_color="transparent")
         box_host.pack(fill="x", padx=(0, 0), pady=(0, 8))
-        ctk.CTkLabel(box_host, text="Host Ollama", font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=(0, 4))
+        ctk.CTkLabel(box_host, text="Host Ollama (local)", font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=(0, 4))
         self._host_entry = ctk.CTkEntry(box_host, fg_color=PANEL, border_color="#1a1a3a", text_color=TEXT, placeholder_text="http://localhost:11434", height=32, font=ctk.CTkFont(size=12))
         self._host_entry.pack(fill="x", padx=(20, 12), pady=(0, 0))
+        self._host_entry.insert(0, self._host_ollama)
+
+        # ---- Fonte dos modelos: local, nuvem ou os dois ----
+        box_fonte = ctk.CTkFrame(self._box_ollama, fg_color="transparent")
+        box_fonte.pack(fill="x", padx=(0, 0), pady=(8, 0))
+        ctk.CTkLabel(box_fonte, text="Buscar modelos em", font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=(0, 4))
+        self._fonte_var = ctk.StringVar(value=self._fonte_modelos)
+        self._fonte_menu = ctk.CTkOptionMenu(
+            box_fonte, values=list(FONTES_MODELO.values()), variable=self._fonte_var,
+            fg_color=PANEL, button_color="#1a1a3a", button_hover_color=ACCENT, text_color=TEXT,
+            width=280, font=ctk.CTkFont(size=12), command=self._on_fonte_mudou
+        )
+        self._fonte_menu.pack(side="left", padx=(20, 12), pady=(0, 0))
+        ctk.CTkButton(
+            box_fonte, text="\U0001f504", width=32, height=30, corner_radius=6,
+            fg_color="#2a2a4a", hover_color="#3a3a5a", text_color=TEXT,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            command=self._atualizar_modelos
+        ).pack(side="left", padx=(0, 0), pady=(0, 0))
+
+        # ---- Chave do Ollama Cloud ----
+        box_nuvem = ctk.CTkFrame(self._box_ollama, fg_color="transparent")
+        box_nuvem.pack(fill="x", padx=(0, 0), pady=(8, 0))
+        ctk.CTkLabel(box_nuvem, text="API Key do Ollama Cloud", font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT, anchor="w").pack(anchor="w", padx=(20, 0), pady=(0, 4))
+        self._ollama_cloud_key_entry = ctk.CTkEntry(box_nuvem, fg_color=PANEL, border_color="#1a1a3a", text_color=TEXT, placeholder_text="Deixe vazio so para listar", height=32, font=ctk.CTkFont(size=12), show="*")
+        self._ollama_cloud_key_entry.pack(fill="x", padx=(20, 12), pady=(0, 2))
+        self._ollama_cloud_key_entry.insert(0, self._ollama_cloud_key)
+        ctk.CTkLabel(box_nuvem, text="Crie a chave em ollama.com/settings/keys (a listagem de modelos funciona sem chave)", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0), pady=(0, 8))
 
         self._box_gemini = ctk.CTkFrame(scroll_config, fg_color="#1a1a3a", corner_radius=8)
         self._box_gemini.pack(fill="x", pady=(0, 8))
@@ -439,6 +476,8 @@ class AtlasApp(ctk.CTk):
             # caso mantem o modelo ja configurado em vez de voltar para llama3.2.
             if info:
                 self.modelo_ollama = info.get("nome", self.modelo_ollama)
+                self._modelo_fonte = info.get("fonte", self._modelo_fonte)
+                self._modelo_host = info.get("host", self._modelo_host)
             elif not self.modelo_ollama:
                 self.modelo_ollama = "llama3.2"
             self._provider = self._provider_var.get()
@@ -446,6 +485,9 @@ class AtlasApp(ctk.CTk):
             self._gemini_model = self._gemini_model_var.get()
             self._motor_voz = self._motor_var.get()
             self._motor_tts = self._motor_tts_var.get()
+            # Ollama Cloud: chave e origem da lista de modelos.
+            self._ollama_cloud_key = self._ollama_cloud_key_entry.get().strip()
+            self._fonte_modelos = self._fonte_atual()
             configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model, self._motor_tts)
             self._atualizar_host_ollama()
             self._intensidade = self._intensidade_slider.get()
@@ -737,7 +779,8 @@ class AtlasApp(ctk.CTk):
             resultado_text.insert("1.0", "Gerando modificacao... Backup sendo criado...")
             resultado_text.configure(state="disabled")
             def tarefa():
-                novo, diff, original = aplicar_modificacao(arquivo, desc, provider=self._provider, api_key=self._get_api_key(), modelo=self._get_modelo())
+                novo, diff, original = aplicar_modificacao(arquivo, desc, provider=self._provider, api_key=self._get_api_key(), modelo=self._get_modelo(),
+                                                     host=self._get_host_modelo(), ollama_key=self._get_api_key_ollama())
                 if novo and diff:
                     self.after(0, lambda: _mostrar_resultado(diff, novo, arquivo))
                 else:
@@ -1001,7 +1044,9 @@ class AtlasApp(ctk.CTk):
             query = search_match.group(1)
             resultados = search(query)
             resp = responder_com_fontes(query, resultados, modelo=self._get_modelo(),
-                                        provider=self._provider, api_key=self._get_api_key())
+                                        provider=self._provider, api_key=self._get_api_key(),
+                                        host=self._get_host_modelo(),
+                                        ollama_key=self._get_api_key_ollama())
             self._finish(text, resp)
             return
         if not self.pensando:
@@ -1013,6 +1058,8 @@ class AtlasApp(ctk.CTk):
         resp = chat_com_ferramentas(text, self.historico, modelo=self._get_modelo(),
                                     provider=self._provider, api_key=self._get_api_key(),
                                     contexto=contexto,
+                                    host=self._get_host_modelo(),
+                                    ollama_key=self._get_api_key_ollama(),
                                     ao_usar_ferramenta=self._ferramenta_em_uso)
         self._finish(text, resp)
 
@@ -1233,7 +1280,9 @@ OUTROS:
     def _handle_code(self, lang, task):
         prompt = f"Crie um codigo em {lang} que: {task}. Responda APENAS com o codigo entre crases triplas."
         resposta = chat(prompt, modelo=self._get_modelo(), provider=self._provider,
-                        api_key=self._get_api_key(), perfil="tecnico", temperature=0.1)
+                        api_key=self._get_api_key(), perfil="tecnico", temperature=0.1,
+                        host=self._get_host_modelo(),
+                        ollama_key=self._get_api_key_ollama())
         m = re.search(r"```(?:\w+)?\s*\n(.*?)```", resposta, re.DOTALL)
         if m:
             codigo = m.group(1).strip()
@@ -1279,22 +1328,56 @@ OUTROS:
             threading.Thread(target=speak, args=(resp, self.vozelecionada, self.velocidade_voz), daemon=True).start()
 
     def _atualizar_modelos(self):
-        """Busca modelos instalados no Ollama e atualiza o dropdown."""
-        combo = self._model_combo
-        info_label = self._model_info_label
+        """Busca modelos no Ollama local e/ou no Ollama Cloud e atualiza o dropdown.
+
+        A busca roda em uma thread de fundo, mas a interface e atualizada
+        sempre na thread principal (chamar o Tk de outra thread pode
+        derrubar a aplicacao).
+        """
+        fonte = self._fonte_atual()
+        api_key = self._ollama_cloud_key
+        self._modelos_buscando = True
+        self._modelos_resultado = None
+
         def buscar():
-            modelos = obter_modelos_ollama()
-            self._modelos_info = {m["display"]: m for m in modelos}
-            displays = [m["display"] for m in modelos] or ["Nenhum modelo encontrado"]
             try:
-                if combo.winfo_exists():
-                    self.after(0, lambda: combo.configure(values=displays))
-                if modelos and combo.winfo_exists():
-                    self.after(0, lambda: self._model_var.set(modelos[0]["display"]))
-                    self.after(0, lambda: self._atualizar_info_modelo(modelos[0]["display"]))
+                self._modelos_resultado = obter_modelos_ollama(fonte, api_key)
             except Exception:
-                pass
+                self._modelos_resultado = []
+            self._modelos_buscando = False
+
         threading.Thread(target=buscar, daemon=True).start()
+        self.after(150, self._aplicar_modelos)
+
+    def _aplicar_modelos(self):
+        """Entrega na interface o resultado da busca de modelos."""
+        if getattr(self, "_modelos_buscando", False):
+            self.after(150, self._aplicar_modelos)
+            return
+        modelos = getattr(self, "_modelos_resultado", None) or []
+        self._modelos_info = {m["display"]: m for m in modelos}
+        displays = [m["display"] for m in modelos] or ["Nenhum modelo encontrado"]
+        try:
+            if not self._model_combo.winfo_exists():
+                return
+            self._model_combo.configure(values=displays)
+            if not modelos:
+                self._model_var.set(displays[0])
+                self._atualizar_info_modelo(displays[0])
+                return
+            # Tenta manter o modelo ja configurado, para nao trocar o modelo
+            # do usuario toda vez que a lista e recarregada.
+            escolhido = None
+            for m in modelos:
+                if m["nome"] == self.modelo_ollama and m["fonte"] == self._modelo_fonte:
+                    escolhido = m["display"]
+                    break
+            if escolhido is None:
+                escolhido = modelos[0]["display"]
+            self._model_var.set(escolhido)
+            self._on_modelo_mudou(escolhido)
+        except Exception:
+            pass
 
     def _atualizar_info_modelo(self, display):
         """Atualiza label com info do modelo selecionado."""
@@ -1305,11 +1388,19 @@ OUTROS:
             return
         info = self._modelos_info.get(display, {})
         if info:
+            nuvem = info.get("fonte") == "nuvem"
+            origem = "Ollama Cloud (nuvem)" if nuvem else "Ollama local"
             texto = (f"Modelo: {info['nome']}\n"
+                     f"Origem: {origem}\n"
                      f"Tamanho: {info['tamanho_gb']} GB\n"
                      f"Parâmetros: {info['parametros']}\n"
                      f"Quantização: {info['quantizacao']}\n"
                      f"Família: {info['familia']}")
+            capacidades = info.get("capacidades") or []
+            if capacidades:
+                texto += f"\n Capacidades: {', '.join(capacidades)}"
+            if nuvem:
+                texto += "\n Requer API Key do Ollama Cloud para conversar"
         else:
             texto = "Nenhum modelo selecionado"
         self._model_info_label.configure(text=texto)
@@ -1354,6 +1445,10 @@ OUTROS:
         host = self._host_entry.get().strip()
         if host:
             OLLAMA_HOST = host
+            self._host_ollama = host
+        # Sincroniza o modulo brain: antes o HOST ficava fixo no local e
+        # nenhuma alteracao feita na GUI chegava as chamadas de chat.
+        definir_host(self._host_ollama, self._ollama_cloud_key)
 
     def _get_api_key(self):
         """Retorna a API key Gemini sempre que disponivel (independente do provider de chat)."""
@@ -1361,11 +1456,55 @@ OUTROS:
             return self._gemini_key
         return None
 
+    def _get_api_key_ollama(self):
+        """Retorna a chave do Ollama Cloud (usada apenas pela nuvem)."""
+        return self._ollama_cloud_key or None
+
     def _get_modelo(self):
         """Retorna o modelo correto baseado no provider."""
         if self._provider == "gemini":
             return self._gemini_model
         return self.modelo_ollama
+
+    def _get_host_modelo(self):
+        """Servidor que deve atender o modelo escolhido.
+
+        Modelos marcados como "nuvem" vao para o Ollama Cloud; os demais
+        vao para o servidor local configurado pelo usuario.
+        """
+        if self._modelo_fonte == "nuvem":
+            return HOST_NUVEM
+        return self._modelo_host or self._host_ollama or OLLAMA_HOST
+
+    def _fonte_atual(self):
+        """Traduz o texto do seletor "Buscar modelos em" para a chave interna."""
+        try:
+            texto = self._fonte_var.get()
+        except Exception:
+            texto = ""
+        for chave, rotulo in FONTES_MODELO.items():
+            if rotulo == texto:
+                return chave
+        return self._fonte_modelos if self._fonte_modelos in FONTES_MODELO else "ambos"
+
+    def _on_fonte_mudou(self):
+        """Troca a origem dos modelos (local, nuvem ou ambos) e recarrega a lista."""
+        self._fonte_modelos = self._fonte_atual()
+        self._atualizar_modelos()
+
+    def _on_modelo_mudou(self, display=None):
+        """Registra o modelo escolhido e atualiza o painel de informacoes."""
+        try:
+            if display is None:
+                display = self._model_var.get()
+        except Exception:
+            display = ""
+        info = self._modelos_info.get(display, {})
+        if info:
+            self.modelo_ollama = info.get("nome", self.modelo_ollama)
+            self._modelo_fonte = info.get("fonte", self._modelo_fonte)
+            self._modelo_host = info.get("host", self._host_ollama)
+        self._atualizar_info_modelo(display)
 
     def _get_vision_model(self):
         """Retorna um modelo Gemini valido para visao, independente do provider de chat."""
@@ -1399,6 +1538,15 @@ OUTROS:
                 self.vozelecionada = cfg.get("voz", self.vozelecionada)
                 self.velocidade_voz = cfg.get("velocidade", self.velocidade_voz)
                 self.modelo_ollama = cfg.get("modelo", self.modelo_ollama)
+                self._modelo_fonte = cfg.get("modelo_fonte", self._modelo_fonte)
+                self._host_ollama = cfg.get("host_ollama", self._host_ollama)
+                self._ollama_cloud_key = cfg.get("ollama_cloud_key", self._ollama_cloud_key)
+                self._fonte_modelos = cfg.get("fonte_modelos", self._fonte_modelos)
+                if self._fonte_modelos not in FONTES_MODELO:
+                    self._fonte_modelos = "ambos"
+                # Aplica o host e a chave no modulo brain (a GUI e o terminal
+                # conversam com o mesmo servidor).
+                definir_host(self._host_ollama, self._ollama_cloud_key)
                 self._provider = cfg.get("provider", self._provider)
                 self._gemini_key = cfg.get("gemini_key", self._gemini_key)
                 self._gemini_model = cfg.get("gemini_model", self._gemini_model)
@@ -1421,6 +1569,10 @@ OUTROS:
                 "voz": self.vozelecionada,
                 "velocidade": self.velocidade_voz,
                 "modelo": self.modelo_ollama,
+                "modelo_fonte": self._modelo_fonte,
+                "host_ollama": self._host_ollama,
+                "ollama_cloud_key": self._ollama_cloud_key,
+                "fonte_modelos": self._fonte_modelos,
                 "provider": self._provider,
                 "gemini_key": self._gemini_key,
                 "gemini_model": self._gemini_model,

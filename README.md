@@ -91,6 +91,43 @@ O Atlas precisa do Ollama para funcionar.
 
 
 ============================================================
+  MODELOS DA NUVEM DO OLLAMA (Ollama Cloud)
+============================================================
+
+O Atlas tambem lista e usa os modelos que ficam na nuvem do Ollama
+(ollama.com). Nada e baixado para o computador: o modelo roda no
+servidor do Ollama.
+
+Como ativar:
+
+1. No menu de configuracoes (engrenagem), na aba "Cerebro":
+   - Em "Buscar modelos em" escolha "Local + Nuvem"
+     (ou "Somente Nuvem (Ollama Cloud)").
+   - Clique no botao de atualizar (⟳) ao lado do seletor.
+   - Os modelos da nuvem aparecem na lista com o prefixo
+     "[nuvem]".
+
+2. Para CONVERSAR com um modelo da nuvem, e preciso ter uma API Key:
+   - Crie a chave em: https://ollama.com/settings/keys
+   - Cole a chave no campo "API Key do Ollama Cloud" e salve.
+
+   Observacoes:
+   - A LISTAGEM dos modelos funciona sem chave; apenas a conversa
+     exige a chave.
+   - A chave fica no "config.json" da maquina, que NAO vai para o
+     GitHub.
+   - O painel do modelo mostra a origem (local ou nuvem) e as
+     capacidades do modelo (ferramentas, raciocinio, visao).
+
+3. Escolha o modelo da nuvem na lista e converse normalmente.
+   O Atlas passa a falar com https://ollama.com/api/chat usando a
+   sua chave, de forma automatica.
+
+Se voce so quiser usar o Ollama local, deixe em "Somente Local" e
+deixe o campo da chave vazio.
+
+
+============================================================
   COMO USAR
 ============================================================
 
@@ -200,7 +237,9 @@ inventar coisas). Para garantir que ele nao minta:
    da execucao e o que aparece para o Senhor.
 
 DICA: o modelo padrao (llama3.2) e pequeno e erra mais. Para respostas
-mais precisas, troque o provedor para Gemini nas configuracoes.
+mais precisas, troque o provedor para Gemini nas configuracoes, ou
+use um modelo maior da nuvem do Ollama (veja a secao "MODELOS DA
+NUVEM DO OLLAMA").
 
 
 ============================================================
@@ -209,6 +248,14 @@ mais precisas, troque o provedor para Gemini nas configuracoes.
 
 PROBLEMA: "Ollama nao esta rodando"
 SOLUCAO: Abra o terminal e rode: ollama serve
+
+PROBLEMA: "Erro: falta a API Key do Ollama Cloud"
+SOLUCAO: Crie uma chave em https://ollama.com/settings/keys e cole
+         no campo "API Key do Ollama Cloud" nas configuracoes.
+
+PROBLEMA: "Erro: o Ollama recusou a chave da API"
+SOLUCAO: A chave esta expirada ou foi digitada errada. Gere outra
+         em https://ollama.com/settings/keys
 
 PROBLEMA: "Nao consegui abrir [programa]"
 SOLUCAO: Verifique se o programa esta instalado.

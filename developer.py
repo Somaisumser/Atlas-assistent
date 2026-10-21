@@ -156,7 +156,8 @@ def _extrair_codigo_completo(resposta, num_linhas_esperado):
     return None
 
 
-def sugerir_modificacao(nome_arquivo, descricao, conteudo_atual, provider="ollama", api_key=None, modelo=None):
+def sugerir_modificacao(nome_arquivo, descricao, conteudo_atual, provider="ollama", api_key=None, modelo=None,
+                        host=None, ollama_key=None):
     """Usa IA para sugerir uma modificacao no codigo."""
     num_linhas = len(conteudo_atual.splitlines())
 
@@ -187,7 +188,8 @@ RETORNE O ARQUIVO COMPLETO INTEIRO:"""
 
     print(f"[Dev] Provider: {provider}, Modelo: {modelo}")
     resposta = chat(prompt, provider=provider, api_key=api_key, modelo=modelo,
-                    perfil="tecnico", temperature=0.1)
+                    perfil="tecnico", temperature=0.1,
+                    host=host, ollama_key=ollama_key)
     
     if not resposta:
         print("[Dev] Resposta vazia do chat")
@@ -213,13 +215,15 @@ RETORNE O ARQUIVO COMPLETO INTEIRO:"""
     return None
 
 
-def aplicar_modificacao(nome_arquivo, descricao, provider="ollama", api_key=None, modelo=None):
+def aplicar_modificacao(nome_arquivo, descricao, provider="ollama", api_key=None, modelo=None,
+                        host=None, ollama_key=None):
     """Fluxo completo: ler, sugerir, validar, mostrar diff."""
     conteudo, erro = ler_arquivo(nome_arquivo)
     if erro:
         return None, erro, None
 
-    novo_conteudo = sugerir_modificacao(nome_arquivo, descricao, conteudo, provider=provider, api_key=api_key, modelo=modelo)
+    novo_conteudo = sugerir_modificacao(nome_arquivo, descricao, conteudo, provider=provider, api_key=api_key,
+                                         modelo=modelo, host=host, ollama_key=ollama_key)
     if not novo_conteudo:
         return None, f"Nao consegui gerar a modificacao. Verifique se o {provider.upper()} esta rodando.", None
 

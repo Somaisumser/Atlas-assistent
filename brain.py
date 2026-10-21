@@ -4,6 +4,8 @@ import base64
 import re
 
 HOST = "http://localhost:11434"
+HOST_NUVEM = "https://ollama.com"
+API_KEY_OLLAMA = None
 MODEL = "llama3.2"
 
 _session = requests.Session()
@@ -56,6 +58,126 @@ GEMINI_MODELS = [
     "gemini-3.6-flash",
     "gemini-3.5-flash",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Ollama: servidor local e nuvem (ollama.com)
+# ---------------------------------------------------------------------------
+
+def definir_host(host: str = None, api_key: str = None) -> None:
+    """Define o host do Ollama local e a chave da API da nuvem.
+
+    A chave e usada apenas quando o host aponta para o Ollama Cloud
+    (https://ollama.com), que exige autenticacao.
+    """
+    global HOST, API_KEY_OLLAMA
+    if host:
+        HOST = host.strip().rstrip("/")
+    API_KEY_OLLAMA = (api_key or "").strip() or None
+
+
+def eh_nuvem(host: str = None) -> bool:
+    """True se o host for o Ollama Cloud."""
+    alvo = (host or HOST or "").lower()
+    return "ollama.com" in alvo
+
+
+def _headers_ollama(host: str = None, api_key: str = None) -> dict:
+    """Headers de autenticacao, quando o alvo e a nuvem."""
+    headers = {}
+    chave = (api_key or API_KEY_OLLAMA or "").strip()
+    if eh_nuvem(host) and chave:
+        headers["Authorization"] = f"Bearer {chave}"
+    return headers
+
+
+def listar_modelos(host: str = None, api_key: str = None) -> list:
+    """Lista os modelos disponiveis em um host Ollama (local ou nuvem).
+
+    Devolve uma lista de dicionarios normalizados com as chaves:
+    nome, tamanho_gb, parametros, quantizacao, familia, capacidades,
+    fonte, host e display.
+    """
+    alvo = (host or HOST).strip().rstrip("/")
+    if not alvo:
+        return []
+    nuvem = eh_nuvem(alvo)
+    try:
+        resp = _session.get(
+            f"{alvo}/api/tags",
+            headers=_headers_ollama(alvo, api_key),
+            timeout=10,
+        )
+        resp.raise_for_status()
+        brutos = resp.json().get("models", [])
+    except Exception:
+        return []
+
+    modelos = []
+    for m in brutos:
+        nome = m.get("name") or m.get("model") or ""
+        if not nome:
+            continue
+        detalhes = m.get("details") or {}
+        tamanho = m.get("size") or 0
+        tamanho_gb = round(tamanho / (1024 ** 3), 1) if tamanho else 0.0
+        parametros = detalhes.get("parameter_size") or ""
+        quantizacao = detalhes.get("quantization_level") or ""
+        familia = detalhes.get("family") or ""
+        capacidades = m.get("capabilities") or []
+
+        if nuvem:
+            partes = [nome]
+            if parametros:
+                partes.append(parametros)
+            if quantizacao:
+                partes.append(quantizacao)
+            info = ", ".join(partes)
+            display = f"[nuvem] {info}" if info else f"[nuvem] {nome}"
+        else:
+            display = (f"{nome}  ({tamanho_gb}GB, "
+                       f"{parametros or '?'}, {quantizacao or '?'})")
+
+        modelos.append({
+            "nome": nome,
+            "tamanho_gb": tamanho_gb,
+            "parametros": parametros or "?",
+            "quantizacao": quantizacao or "?",
+            "familia": familia or "?",
+            "capacidades": capacidades,
+            "fonte": "nuvem" if nuvem else "local",
+            "host": alvo,
+            "display": display,
+        })
+    return modelos
+
+
+def _erro_ollama(e, api_key=None) -> str:
+    """Traduz um erro HTTP do Ollama em uma mensagem util para o usuario."""
+    resp = getattr(e, "response", None)
+    if resp is not None:
+        codigo = resp.status_code
+        if codigo == 401:
+            if not (api_key or API_KEY_OLLAMA):
+                return ("Erro: falta a API Key do Ollama Cloud. Crie uma em "
+                        "ollama.com/settings/keys e preencha nas Configuracoes.")
+            return ("Erro: o Ollama recusou a chave da API. "
+                    "Confira a chave em ollama.com/settings/keys.")
+        if codigo == 402:
+            return ("Erro: sem creditos ou limite de uso no Ollama Cloud. "
+                    "Verifique sua conta em ollama.com.")
+        if codigo == 404:
+            return ("Erro: modelo nao encontrado no servidor. "
+                    "Atualize a lista de modelos nas Configuracoes.")
+        if codigo == 429:
+            return "Erro: limite de requisicoes atingido. Tente de novo em instantes."
+        corpo = ""
+        try:
+            corpo = (resp.text or "")[:200]
+        except Exception:
+            pass
+        return f"Erro do Ollama (HTTP {codigo}): {corpo}"
+    return f"Erro ao falar com o Atlas: {e}"
 
 
 def contexto_sistema() -> str:
@@ -169,25 +291,34 @@ def _post_com_retry(url, headers, json, timeout, tentativas=3, espera_base=2.0):
 
 
 def _chat_ollama(mensagem, historico, modelo, contexto=None, temperature=0.2, perfil="mordomo",
-                 sistema_extra=None):
+                 sistema_extra=None, host=None, api_key=None):
+    alvo = (host or HOST).strip().rstrip("/")
+    nuvem = eh_nuvem(alvo)
+
     messages = [{"role": "system", "content": _montar_system_prompt(contexto, perfil, sistema_extra)}]
     if historico:
         messages.extend(historico[-8:])
     if mensagem:
         messages.append({"role": "user", "content": mensagem})
 
+    corpo = {
+        "model": modelo or MODEL,
+        "messages": messages,
+        "stream": False,
+        # Temperatura baixa: o Atlas responde como mordomo, nao como gerador criativo.
+        # Valores altos (0.7+) aumentam a taxa de invencao de fatos.
+        "options": {"temperature": temperature, "top_p": 0.9},
+    }
+    # keep_alive so existe no servidor local: na nuvem o modelo e gerenciado
+    # pelo Ollama e o parametro e ignorado.
+    if not nuvem:
+        corpo["keep_alive"] = "30m"
+
     resp = _session.post(
-        f"{HOST}/api/chat",
-        json={
-            "model": modelo or MODEL,
-            "messages": messages,
-            "stream": False,
-            "keep_alive": "30m",
-            # Temperatura baixa: o Atlas responde como mordomo, nao como gerador criativo.
-            # Valores altos (0.7+) aumentam a taxa de invencao de fatos.
-            "options": {"temperature": temperature, "top_p": 0.9},
-        },
-        timeout=120,
+        f"{alvo}/api/chat",
+        json=corpo,
+        headers=_headers_ollama(alvo, api_key),
+        timeout=180,
     )
     resp.raise_for_status()
     return resp.json().get("message", {}).get("content", "Sem resposta.")
@@ -229,7 +360,8 @@ def _chat_gemini(mensagem, historico, modelo, api_key, contexto=None, temperatur
 def chat(mensagem: str, historico: list = None, modelo: str = None,
          provider: str = "ollama", api_key: str = None,
          contexto: str = None, temperature: float = 0.2,
-         perfil: str = "mordomo") -> str:
+         perfil: str = "mordomo", host: str = None,
+         ollama_key: str = None) -> str:
     """Envia mensagem e retorna a resposta. Provider: ollama, gemini.
 
     `contexto` opcional: dados REAIS (ex: resultados de busca) que o modelo deve
@@ -237,6 +369,9 @@ def chat(mensagem: str, historico: list = None, modelo: str = None,
     CONTEXTO VERIFICADO com data/hora/sistema, e diz que nao sabe caso falte algo.
 
     `perfil`: "mordomo" (conversa normal) ou "tecnico" (codigo, sem persona).
+
+    `host`: servidor Ollama a usar. Padrao e o local; para a nuvem do Ollama
+    use "https://ollama.com" e passe `ollama_key`.
     """
     try:
         if provider == "gemini" and api_key:
@@ -244,16 +379,22 @@ def chat(mensagem: str, historico: list = None, modelo: str = None,
                                 contexto=contexto, temperature=temperature, perfil=perfil)
         else:
             return _chat_ollama(mensagem, historico, modelo,
-                                 contexto=contexto, temperature=temperature, perfil=perfil)
+                                 contexto=contexto, temperature=temperature, perfil=perfil,
+                                 host=host, api_key=ollama_key)
     except requests.ConnectionError:
+        if eh_nuvem(host):
+            return "Erro: nao consegui falar com o Ollama Cloud. Verifique a internet."
         return "Erro: Ollama nao esta rodando. Abra o terminal e digite: ollama serve"
+    except requests.HTTPError as e:
+        return _erro_ollama(e)
     except Exception as e:
         return f"Erro ao falar com o Atlas: {e}"
 
 
 def responder_com_fontes(pergunta: str, resultados: str, historico: list = None,
                          modelo: str = None, provider: str = "ollama",
-                         api_key: str = None) -> str:
+                         api_key: str = None, host: str = None,
+                         ollama_key: str = None) -> str:
     """Responde uma pergunta usando SOMENTE os resultados de busca fornecidos.
 
     Substitui o "Resuma de forma curta" solto, que era a principal fonte de
@@ -276,7 +417,8 @@ def responder_com_fontes(pergunta: str, resultados: str, historico: list = None,
         "5) seja breve, 2 a 4 frases."
     )
     return chat(mensagem, historico, modelo=modelo, provider=provider,
-                api_key=api_key, contexto=contexto, temperature=0.1)
+                api_key=api_key, contexto=contexto, temperature=0.1,
+                host=host, ollama_key=ollama_key)
 
 
 # ---------------------------------------------------------------------------
@@ -317,7 +459,8 @@ def _limpar_marcadores(texto: str) -> str:
 def chat_com_ferramentas(mensagem: str, historico: list = None, modelo: str = None,
                           provider: str = "ollama", api_key: str = None,
                           contexto: str = None, temperature: float = 0.2,
-                          max_iteracoes: int = 3, ao_usar_ferramenta=None) -> str:
+                          max_iteracoes: int = 3, ao_usar_ferramenta=None,
+                          host: str = None, ollama_key: str = None) -> str:
     """Responde permitindo que o modelo consulte ferramentas com dados reais.
 
     Fluxo:
@@ -330,6 +473,8 @@ def chat_com_ferramentas(mensagem: str, historico: list = None, modelo: str = No
 
     `ao_usar_ferramenta`: callback opcional receives o nome da ferramenta,
     usado pela GUI para mostrar o que esta acontecendo.
+
+    `host` / `ollama_key`: servidor Ollama (local ou nuvem) e a chave da nuvem.
     """
     from tools import executar, catalogo_texto, INSTRUCAO_FERRAMENTAS
 
@@ -351,7 +496,7 @@ def chat_com_ferramentas(mensagem: str, historico: list = None, modelo: str = No
                                 sistema_extra=instrucao)
         return _chat_ollama(None, hist, modelo, contexto=contexto_acum,
                             temperature=temperature, perfil="mordomo",
-                            sistema_extra=instrucao)
+                            sistema_extra=instrucao, host=host, api_key=ollama_key)
 
     try:
         for _ in range(max_iteracoes):
@@ -393,19 +538,18 @@ def chat_com_ferramentas(mensagem: str, historico: list = None, modelo: str = No
         return _limpar_marcadores(resposta) or resposta
 
     except requests.ConnectionError:
+        if eh_nuvem(host):
+            return "Erro: nao consegui falar com o Ollama Cloud. Verifique a internet."
         return "Erro: Ollama nao esta rodando. Abra o terminal e digite: ollama serve"
+    except requests.HTTPError as e:
+        return _erro_ollama(e, ollama_key)
     except Exception as e:
         return f"Erro ao falar com o Atlas: {e}"
 
 
 def listar_modelos_ollama() -> list:
-    """Lista modelos disponiveis no Ollama."""
-    try:
-        resp = _session.get(f"{HOST}/api/tags", timeout=3)
-        resp.raise_for_status()
-        return [m["name"] for m in resp.json().get("models", [])]
-    except Exception:
-        return []
+    """Lista modelos disponiveis no Ollama local."""
+    return [m["nome"] for m in listar_modelos(HOST)]
 
 
 def transcrever_audio(audio_b64: str, api_key: str, modelo: str = None) -> str | None:

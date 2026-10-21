@@ -10,7 +10,8 @@ import threading
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from brain import chat, chat_com_ferramentas, responder_com_fontes, ver_tela, criar_imagem, GEMINI_MODELS
+from brain import (chat, chat_com_ferramentas, responder_com_fontes, ver_tela, criar_imagem,
+                   GEMINI_MODELS, definir_host, eh_nuvem, HOST_NUVEM)
 from voice import listen, speak, VOZES, EscutaDinamica, stop_speak, configurar_motor_voz, trocar_motor_fala, motor_fala_atual, listar_motores_fala, extrair_nome_voz
 from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala, desligar_computador, reiniciar_computador, suspender_computador, open_folder, open_file
 from file_manager import list_dir, read_file, create_file, delete_file
@@ -30,11 +31,17 @@ _gemini_model = "gemini-3.6-flash"
 _gemini_imagem_model = "gemini-3.1-flash-lite-image"
 _motor_voz = "google"
 _motor_tts = "edge"
+_modelo = "llama3.2"
+# "local" (servidor do usuario) ou "nuvem" (Ollama Cloud em ollama.com)
+_modelo_fonte = "local"
+_host_ollama = "http://localhost:11434"
+_ollama_cloud_key = ""
 _config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 
 
 def _load_config():
     global _provider, _gemini_key, _gemini_model, _gemini_imagem_model, _motor_voz, _motor_tts
+    global _modelo, _modelo_fonte, _host_ollama, _ollama_cloud_key
     try:
         if os.path.exists(_config_path):
             with open(_config_path, "r", encoding="utf-8") as f:
@@ -45,6 +52,13 @@ def _load_config():
             _gemini_imagem_model = cfg.get("gemini_imagem_model", _gemini_imagem_model)
             _motor_voz = cfg.get("motor_voz", _motor_voz)
             _motor_tts = cfg.get("motor_tts", _motor_tts)
+            # Modelo do Ollama (antes o terminal ignorava o config.json e
+            # usava sempre o padrao do brain.py).
+            _modelo = cfg.get("modelo", _modelo)
+            _modelo_fonte = cfg.get("modelo_fonte", _modelo_fonte)
+            _host_ollama = cfg.get("host_ollama", _host_ollama)
+            _ollama_cloud_key = cfg.get("ollama_cloud_key", _ollama_cloud_key)
+            definir_host(_host_ollama, _ollama_cloud_key)
     except Exception:
         pass
 
@@ -59,7 +73,19 @@ def _get_api_key():
 def _get_model():
     if _provider == "gemini":
         return _gemini_model
-    return None
+    return _modelo
+
+
+def _get_host():
+    """Servidor que atende o modelo configurado (local ou Ollama Cloud)."""
+    if _modelo_fonte == "nuvem":
+        return HOST_NUVEM
+    return _host_ollama
+
+
+def _get_ollama_key():
+    """Chave do Ollama Cloud, usada apenas quando o modelo vem da nuvem."""
+    return _ollama_cloud_key or None
 
 
 def _get_vision_model():
@@ -326,7 +352,8 @@ OUTROS:
         task = code_match.group(2)
         prompt = f"Crie um codigo em {lang} que: {task}. Responda APENAS com o codigo entre crases triplas."
         resp = chat(prompt, provider=_provider, api_key=_get_api_key(), modelo=_get_model(),
-                    perfil="tecnico", temperature=0.1)
+                    perfil="tecnico", temperature=0.1,
+                    host=_get_host(), ollama_key=_get_ollama_key())
         m_code = re.search(r"```(?:\w+)?\s*\n(.*?)```", resp, re.DOTALL)
         if m_code:
             resultado = run_code(m_code.group(1).strip(), lang)
@@ -342,13 +369,15 @@ OUTROS:
         query = search_match.group(1)
         resultados = search(query)
         return "Permita-me buscar essa informacao, Senhor.\n" + responder_com_fontes(
-            query, resultados, provider=_provider, api_key=_get_api_key(), modelo=_get_model())
+            query, resultados, provider=_provider, api_key=_get_api_key(), modelo=_get_model(),
+            host=_get_host(), ollama_key=_get_ollama_key())
 
     # Geral (IA) - com ferramentas e dados reais do sistema
     contexto = contexto_inicial(texto, api_key=_get_api_key())
     return chat_com_ferramentas(texto, HISTORICO, provider=_provider,
                                 api_key=_get_api_key(), modelo=_get_model(),
-                                contexto=contexto)
+                                contexto=contexto,
+                                host=_get_host(), ollama_key=_get_ollama_key())
 
 
 def main():
