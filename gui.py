@@ -25,11 +25,12 @@ def _strip_ansi(texto):
     """Remove codigos ANSI de cores para exibicao na GUI."""
     return re.sub(r'\033\[[0-9;]*m', '', texto)
 
-from brain import chat, ver_tela, criar_imagem, GEMINI_MODELS
-from voice import listen, speak, stop_speak, VOZES, EscutaDinamica, configurar_motor_voz, MOTORES_FALA
+from brain import chat, chat_com_ferramentas, responder_com_fontes, ver_tela, criar_imagem, GEMINI_MODELS
+from voice import listen, speak, stop_speak, VOZES, EscutaDinamica, configurar_motor_voz, MOTORES_FALA, extrair_nome_voz
 from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala, desligar_computador, reiniciar_computador, suspender_computador, open_folder, open_file
 from file_manager import list_dir, read_file, create_file, delete_file
 from web_search import search
+from tools import contexto_inicial
 from code_runner import run_code
 from reminders import add_reminder, list_reminders, check_reminders
 from developer import (
@@ -115,6 +116,16 @@ class AtlasApp(ctk.CTk):
         self._tray_icon = None
         self._config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
         self._load_config()
+        # As variaveis do tema nascem aqui (e nao dentro da janela de
+        # Configuracoes) para que o config.json possa ser salvo mesmo
+        # sem nunca abrir essa janela.
+        self._tema_cores = {
+            "accent": ctk.StringVar(value=self._tema.get("accent", ACCENT_PADRAO)),
+            "bg": ctk.StringVar(value=self._tema.get("bg", BG_PADRAO)),
+            "panel": ctk.StringVar(value=self._tema.get("panel", PANEL_PADRAO)),
+            "text": ctk.StringVar(value=self._tema.get("text", TEXT_PADRAO)),
+        }
+        self._intensidade = float(self._tema.get("intensidade", 1.0))
         configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model, self._motor_tts)
         self._aplicar_tema()
         self._build_ui()
@@ -329,12 +340,12 @@ class AtlasApp(ctk.CTk):
         scroll_tema = ctk.CTkScrollableFrame(aba_tema, fg_color="transparent")
         scroll_tema.pack(fill="both", expand=True)
 
-        self._tema_cores = {
-            "accent": ctk.StringVar(value=self._tema.get("accent", ACCENT_PADRAO)),
-            "bg": ctk.StringVar(value=self._tema.get("bg", BG_PADRAO)),
-            "panel": ctk.StringVar(value=self._tema.get("panel", PANEL_PADRAO)),
-            "text": ctk.StringVar(value=self._tema.get("text", TEXT_PADRAO)),
-        }
+        # Reaproveita as variaveis ja existentes (criadas no __init__) para nao
+        # perder o que o usuario ja escolheu ao reabrir a janela.
+        self._tema_cores["accent"].set(self._tema.get("accent", ACCENT_PADRAO))
+        self._tema_cores["bg"].set(self._tema.get("bg", BG_PADRAO))
+        self._tema_cores["panel"].set(self._tema.get("panel", PANEL_PADRAO))
+        self._tema_cores["text"].set(self._tema.get("text", TEXT_PADRAO))
 
         box_tema_cor = ctk.CTkFrame(scroll_tema, fg_color="#1a1a3a", corner_radius=8)
         box_tema_cor.pack(fill="x", pady=(0, 8))
@@ -394,11 +405,11 @@ class AtlasApp(ctk.CTk):
         ctk.CTkLabel(box_intensidade, text="Brilho do tema (aplica ao reiniciar)", text_color=MUTED, font=ctk.CTkFont(size=11)).pack(anchor="w", padx=(20, 0))
 
         self._intensidade_slider = ctk.CTkSlider(box_intensidade, from_=0.3, to=1.5, number_of_steps=12, width=380, fg_color=PANEL, progress_color=ACCENT, button_color=ACCENT, button_hover_color=ACCENT_DIM)
-        self._intensidade_slider.set(self._tema.get("intensidade", 1.0))
+        self._intensidade_slider.set(self._intensidade)
         self._intensidade_slider.pack(anchor="w", padx=(20, 0), pady=(5, 0))
-        self._intensidade_label = ctk.CTkLabel(box_intensidade, text=f"Intensidade: {self._tema.get('intensidade', 1.0):.1f}x", text_color=TEXT, font=ctk.CTkFont(size=13))
+        self._intensidade_label = ctk.CTkLabel(box_intensidade, text=f"Intensidade: {self._intensidade:.1f}x", text_color=TEXT, font=ctk.CTkFont(size=13))
         self._intensidade_label.pack(anchor="w", padx=(20, 0), pady=(5, 0))
-        self._intensidade_slider.configure(command=lambda v: self._intensidade_label.configure(text=f"Intensidade: {v:.1f}x"))
+        self._intensidade_slider.configure(command=self._on_intensidade)
         ctk.CTkFrame(box_intensidade, fg_color="transparent", height=10).pack()
 
         box_reset = ctk.CTkFrame(scroll_tema, fg_color="#1a1a3a", corner_radius=8)
@@ -410,6 +421,7 @@ class AtlasApp(ctk.CTk):
             self._tema_cores["panel"].set(PANEL_PADRAO)
             self._tema_cores["text"].set(TEXT_PADRAO)
             self._intensidade_slider.set(1.0)
+            self._on_intensidade(1.0)
             self._intensidade_label.configure(text="Intensidade: 1.0x")
             for key, lbl in self._tema_color_labels.items():
                 cor = self._tema_cores[key].get()
@@ -423,7 +435,12 @@ class AtlasApp(ctk.CTk):
             self.velocidade_voz = self._speed_slider.get()
             display = self._model_var.get()
             info = self._modelos_info.get(display, {})
-            self.modelo_ollama = info.get("nome", "llama3.2")
+            # Se o Ollama estiver fora do ar, _modelos_info fica vazio: nesse
+            # caso mantem o modelo ja configurado em vez de voltar para llama3.2.
+            if info:
+                self.modelo_ollama = info.get("nome", self.modelo_ollama)
+            elif not self.modelo_ollama:
+                self.modelo_ollama = "llama3.2"
             self._provider = self._provider_var.get()
             self._gemini_key = self._gemini_key_entry.get().strip()
             self._gemini_model = self._gemini_model_var.get()
@@ -431,6 +448,17 @@ class AtlasApp(ctk.CTk):
             self._motor_tts = self._motor_tts_var.get()
             configurar_motor_voz(self._motor_voz, self._gemini_key, self._gemini_model, self._motor_tts)
             self._atualizar_host_ollama()
+            self._intensidade = self._intensidade_slider.get()
+            # Atualiza o tema em memoria e grava tudo no config.json.
+            self._tema = {
+                "accent": self._tema_cores["accent"].get(),
+                "bg": self._tema_cores["bg"].get(),
+                "panel": self._tema_cores["panel"].get(),
+                "text": self._tema_cores["text"].get(),
+                "intensidade": self._intensidade,
+            }
+            self._save_config()
+            self._aplicar_tema()
             win.destroy()
         ctk.CTkButton(win, text="Salvar", fg_color=ACCENT_DIM, hover_color=ACCENT, text_color=BG, font=ctk.CTkFont(size=14, weight="bold"), height=40, corner_radius=10, command=salvar).pack(pady=(0, 15), padx=15, fill="x")
 
@@ -972,14 +1000,39 @@ class AtlasApp(ctk.CTk):
             self._set_status("Pesquisando na internet...")
             query = search_match.group(1)
             resultados = search(query)
-            resp = chat(f"Resuma de forma curta:\n{resultados}", modelo=self._get_modelo(), provider=self._provider, api_key=self._get_api_key())
+            resp = responder_com_fontes(query, resultados, modelo=self._get_modelo(),
+                                        provider=self._provider, api_key=self._get_api_key())
             self._finish(text, resp)
             return
         if not self.pensando:
             return
         self._set_status("Pensando...")
-        resp = chat(text, self.historico, modelo=self._get_modelo(), provider=self._provider, api_key=self._get_api_key())
+        # Coleta dados REAIS do sistema que casem com a pergunta e deixa o
+        # modelo consultar ferramentas extras. Sem isso, o Atlas chumbia.
+        contexto = contexto_inicial(text, api_key=self._get_api_key())
+        resp = chat_com_ferramentas(text, self.historico, modelo=self._get_modelo(),
+                                    provider=self._provider, api_key=self._get_api_key(),
+                                    contexto=contexto,
+                                    ao_usar_ferramenta=self._ferramenta_em_uso)
         self._finish(text, resp)
+
+    def _ferramenta_em_uso(self, nome):
+        """Mostra na barra de status qual ferramenta esta sendo consultada."""
+        rotulos = {
+            "monitorar_pc": "medindo o computador",
+            "programas_abertos": "listando programas",
+            "espaco_disco": "verificando os discos",
+            "rede": "consultando a rede",
+            "listar_arquivos": "listando arquivos",
+            "ler_arquivo": "lendo o arquivo",
+            "lembretes": "checando lembretes",
+            "tempo_atual": "consultando o tempo",
+            "pesquisar": "pesquisando na internet",
+            "data_hora": "verificando a hora",
+            "ver_tela": "olhando a tela",
+        }
+        texto = rotulos.get(nome, f"consultando {nome}")
+        self.after(0, lambda t=texto: self._set_status(t.capitalize() + "...", ORANGE))
 
     def _limpar_artigo(self, texto):
         """Remove artigos e conectivos comuns do inicio do comando."""
@@ -1067,8 +1120,14 @@ OUTROS:
 - "trocar voz [nome]" - mudar voz
 - "velocidade voz [0.5-2.0]" - ajustar velocidade"""
 
-        # Abrir programa (com opcao de monitor)
-        m = re.match(r"(?:abra|abrir|abre|iniciar|inicia|quero|preciso|pode|pode me)\s+(.+)", text)
+        # Abrir programa (com opcao de monitor).
+        # Verbos de acao explicitos.
+        m = re.match(r"(?:abra|abrir|abre|iniciar|inicia)\s+(.+)", text)
+        # Verbos fracos ("quero", "preciso", "pode") exigem um verbo de acao
+        # em seguida. Sem isso, perguntas como "quero saber a temperatura"
+        # viravam comando e o Atlas respondia que o programa nao existe.
+        if not m:
+            m = re.match(r"(?:quero|preciso|pode|pode me)\s+(?:abrir|abre|iniciar|inicia|rodar|executar)\s+(.+)", text)
         if m:
             resto = m.group(1)
             monitor = self._parse_monitor(resto)
@@ -1127,13 +1186,14 @@ OUTROS:
             return "Removendo, Senhor.\n" + delete_file(m.group(1).strip())
 
         # Trocar voz
-        m = re.match(r"(?:troca|trocar|muda|mudar|altera|alterar|coloca|colocar)\s+voz\s+(.+)", text)
+        m = re.match(r"(?:troca|trocar|muda|mudar|altera|alterar|coloca|colocar|use|usar)\s+(?:a\s+|o\s+)?voz\s+(.+)", text)
         if m:
-            nome = m.group(1).strip().title()
-            if nome in VOZES:
+            nome = extrair_nome_voz(text)
+            if nome:
                 self.vozelecionada = nome
                 return f"Voz alterada para {nome}, Senhor."
-            return f"Peço desculpas, Senhor, mas a voz '{nome}' nao foi encontrada. Opcoes: {', '.join(VOZES.keys())}"
+            bruto = re.sub(r"^(?:para|pra|com|em)\s+(?:o\s+|a\s+)?", "", m.group(1).strip()).title()
+            return f"Peço desculpas, Senhor, mas a voz '{bruto}' nao foi encontrada. Opcoes: {', '.join(VOZES.keys())}"
 
         # Listar vozes
         if re.search(r"(?:vozes?|listar\s+vozes?|quais\s+(?:as|são)\s+as\s+vozes?|opcoes?\s+de\s+voz)", text):
@@ -1172,7 +1232,8 @@ OUTROS:
 
     def _handle_code(self, lang, task):
         prompt = f"Crie um codigo em {lang} que: {task}. Responda APENAS com o codigo entre crases triplas."
-        resposta = chat(prompt, modelo=self._get_modelo(), provider=self._provider, api_key=self._get_api_key())
+        resposta = chat(prompt, modelo=self._get_modelo(), provider=self._provider,
+                        api_key=self._get_api_key(), perfil="tecnico", temperature=0.1)
         m = re.search(r"```(?:\w+)?\s*\n(.*?)```", resposta, re.DOTALL)
         if m:
             codigo = m.group(1).strip()
@@ -1257,6 +1318,37 @@ OUTROS:
         callback = lambda texto: self._on_reminder(texto)
         check_reminders(callback)
 
+    def _on_reminder(self, texto):
+        """Mostra o lembrete que venceu.
+
+        Chamado pela thread de lembretes (reminders.py), entao tudo que
+        toca na interface precisa passar pelo after().
+        """
+        def _mostrar():
+            try:
+                self.log("Lembrete", f"Com sua permissao, Senhor: {texto}")
+                self._set_status(f"Lembrete: {texto}", ORANGE)
+                threading.Thread(
+                    target=speak,
+                    args=(f"Lembrete, Senhor. {texto}", self.vozelecionada, self.velocidade_voz),
+                    daemon=True,
+                ).start()
+            except Exception:
+                pass
+
+        try:
+            self.after(0, _mostrar)
+        except Exception:
+            pass
+
+    def _on_intensidade(self, valor):
+        """Atualiza o valor de intensidade do tema (usado pelo slider)."""
+        try:
+            self._intensidade = float(valor)
+            self._intensidade_label.configure(text=f"Intensidade: {self._intensidade:.1f}x")
+        except Exception:
+            pass
+
     def _atualizar_host_ollama(self):
         global OLLAMA_HOST
         host = self._host_entry.get().strip()
@@ -1340,7 +1432,7 @@ OUTROS:
                     "bg": self._tema_cores["bg"].get(),
                     "panel": self._tema_cores["panel"].get(),
                     "text": self._tema_cores["text"].get(),
-                    "intensidade": self._intensidade_slider.get(),
+                    "intensidade": self._intensidade,
                 },
             }
             with open(self._config_path, "w", encoding="utf-8") as f:
@@ -1453,8 +1545,13 @@ OUTROS:
         os._exit(0)
 
     def _on_minimize(self, event):
-        if event.state == "iconic":
-            self.after(100, self._start_tray)
+        # event.state e a mascara de modificadores do teclado, nunca o estado da
+        # janela. O estado real vem de self.state() ("iconic" = minimizada).
+        try:
+            if self.state() == "iconic":
+                self.after(100, self._start_tray)
+        except Exception:
+            pass
 
     def _on_close(self):
         self._do_quit_from_tray()

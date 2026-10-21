@@ -10,11 +10,12 @@ import threading
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from brain import chat, ver_tela, criar_imagem, GEMINI_MODELS
-from voice import listen, speak, VOZES, EscutaDinamica, stop_speak, configurar_motor_voz, trocar_motor_fala, motor_fala_atual, listar_motores_fala
+from brain import chat, chat_com_ferramentas, responder_com_fontes, ver_tela, criar_imagem, GEMINI_MODELS
+from voice import listen, speak, VOZES, EscutaDinamica, stop_speak, configurar_motor_voz, trocar_motor_fala, motor_fala_atual, listar_motores_fala, extrair_nome_voz
 from system_control import open_program, close_program, monitor_pc, monitor_pc_fala, list_running, list_running_fala, desligar_computador, reiniciar_computador, suspender_computador, open_folder, open_file
 from file_manager import list_dir, read_file, create_file, delete_file
 from web_search import search
+from tools import contexto_inicial
 from code_runner import run_code
 from reminders import add_reminder, list_reminders, check_reminders
 from developer import listar_arquivos_codigo, aplicar_modificacao, salvar_arquivo, ler_arquivo
@@ -184,8 +185,13 @@ OUTROS:
 - "trocar voz [nome]" - mudar voz
 - "velocidade voz [0.5-2.0]" - ajustar velocidade"""
 
-    # Abrir programa (com opcao de monitor)
-    m = re.match(r"(?:abra|abrir|abre|iniciar|inicia|quero|preciso|pode|pode me)\s+(.+)", text_low)
+    # Abrir programa (com opcao de monitor).
+    # Verbos de acao explicitos.
+    m = re.match(r"(?:abra|abrir|abre|iniciar|inicia)\s+(.+)", text_low)
+    # Verbos fracos ("quero", "preciso", "pode") exigem um verbo de acao
+    # em seguida. Sem isso, perguntas viravam comando de abertura.
+    if not m:
+        m = re.match(r"(?:quero|preciso|pode|pode me)\s+(?:abrir|abre|iniciar|inicia|rodar|executar)\s+(.+)", text_low)
     if m:
         resto = m.group(1)
         monitor = _parse_monitor(resto)
@@ -247,12 +253,13 @@ OUTROS:
         return "Removendo, Senhor.\n" + delete_file(m.group(1).strip())
 
     # Trocar voz
-    m = re.match(r"(?:troca|trocar|muda|mudar|altera|alterar|coloca|colocar)\s+voz\s+(.+)", text_low)
+    m = re.match(r"(?:troca|trocar|muda|mudar|altera|alterar|coloca|colocar|use|usar)\s+(?:a\s+|o\s+)?voz\s+(.+)", text_low)
     if m:
-        nome = m.group(1).strip().title()
-        if nome in VOZES:
+        nome = extrair_nome_voz(text_low)
+        if nome:
             return f"Voz alterada para {nome}, Senhor."
-        return f"Peço desculpas, Senhor, mas a voz '{nome}' nao foi encontrada. Opcoes: {', '.join(VOZES.keys())}"
+        bruto = re.sub(r"^(?:para|pra|com|em)\s+(?:o\s+|a\s+)?", "", m.group(1).strip()).title()
+        return f"Peço desculpas, Senhor, mas a voz '{bruto}' nao foi encontrada. Opcoes: {', '.join(VOZES.keys())}"
 
     # Listar vozes
     if re.search(r"(?:vozes?|listar\s+vozes?|quais\s+(?:as|são)\s+as\s+vozes?|opcoes?\s+de\s+voz)", text_low):
@@ -318,7 +325,8 @@ OUTROS:
         lang = code_match.group(1)
         task = code_match.group(2)
         prompt = f"Crie um codigo em {lang} que: {task}. Responda APENAS com o codigo entre crases triplas."
-        resp = chat(prompt, provider=_provider, api_key=_get_api_key(), modelo=_get_model())
+        resp = chat(prompt, provider=_provider, api_key=_get_api_key(), modelo=_get_model(),
+                    perfil="tecnico", temperature=0.1)
         m_code = re.search(r"```(?:\w+)?\s*\n(.*?)```", resp, re.DOTALL)
         if m_code:
             resultado = run_code(m_code.group(1).strip(), lang)
@@ -333,10 +341,14 @@ OUTROS:
     if search_match:
         query = search_match.group(1)
         resultados = search(query)
-        return "Permita-me buscar essa informacao, Senhor.\n" + chat(f"Resuma de forma curta:\n{resultados}", provider=_provider, api_key=_get_api_key(), modelo=_get_model())
+        return "Permita-me buscar essa informacao, Senhor.\n" + responder_com_fontes(
+            query, resultados, provider=_provider, api_key=_get_api_key(), modelo=_get_model())
 
-    # Geral (IA)
-    return chat(texto, HISTORICO, provider=_provider, api_key=_get_api_key(), modelo=_get_model())
+    # Geral (IA) - com ferramentas e dados reais do sistema
+    contexto = contexto_inicial(texto, api_key=_get_api_key())
+    return chat_com_ferramentas(texto, HISTORICO, provider=_provider,
+                                api_key=_get_api_key(), modelo=_get_model(),
+                                contexto=contexto)
 
 
 def main():
@@ -351,7 +363,7 @@ def main():
     print_colorido("=" * 55, "ciano")
     print_colorido("Atlas: Aos seus servicos, Senhor. Como posso ajuda-lo?", "verde")
 
-    global escuta_dinamica
+    global escuta_dinamica, VOZ_ATUAL, VELOCIDADE
     _load_config()
     configurar_motor_voz(_motor_voz, _gemini_key, _gemini_model, _motor_tts)
     print_colorido(f"Provider: {_provider.upper()} | Motor de fala: {motor_fala_atual().upper()}", "amarelo")
@@ -398,14 +410,12 @@ def main():
         resp = processar(texto)
 
         # Atualizar voz se comando de troca
-        m = re.match(r"(?:troca|trocar|muda|mudar)\s+voz\s+(.+)", texto.lower().strip())
-        if m:
-            nome = m.group(1).strip().title()
-            if nome in VOZES:
-                VOZ_ATUAL = nome
+        nome = extrair_nome_voz(texto)
+        if nome:
+            VOZ_ATUAL = nome
 
         # Atualizar velocidade
-        m = re.match(r"(?:velocidade|veloc|rapido|lento|devagar)\s+(?:da\s+)?voz\s+(\d+\.?\d*)", texto.lower().strip())
+        m = re.match(r"(?:velocidade|veloc|rapido|lento|devagar|acelerar|desacelerar)\s+(?:da\s+)?voz\s+(\d+\.?\d*)", texto.lower().strip())
         if m:
             vel = float(m.group(1))
             if 0.5 <= vel <= 2.0:

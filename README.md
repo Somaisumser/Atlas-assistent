@@ -146,6 +146,63 @@ Diga "Atlas" seguido do comando:
 
 
 ============================================================
+  VERACIDADE: COMO O ATLAS DEIXA DE ALUCINAR
+============================================================
+
+O Atlas roda em dois niveis: acoes deterministicas (que consultam o
+sistema de verdade) e conversa com o modelo de linguagem (que pode
+inventar coisas). Para garantir que ele nao minta:
+
+1) CONTEXTO VERIFICADO
+   Antes de responder, o Atlas monta um bloco com dados REAIS:
+   data, hora, dia da semana, sistema operacional, usuario logado e
+   a pasta do Atlas. O modelo e obrigado a responder com base nesse
+   bloco. Se o dado nao estiver la, ele diz que nao tem a informacao
+   confirmada em vez de chutar.
+
+2) FERRAMENTAS (dados reais do sistema)
+   Quando a pergunta exige um dado que so o sistema tem, o Atlas
+   consulta a ferramenta correspondente e usa o resultado real:
+
+     - CPU, RAM, disco, temperatura, bateria
+     - Programas e processos em execucao
+     - Espaco em disco
+     - Endereco IP e interfaces de rede
+     - Conteudo de pastas e arquivos
+     - Lembretes e avisos
+     - Tempo atual de uma cidade (Open-Meteo, sem chave de API)
+     - Busca na internet (com citacao da fonte)
+     - Descricao da tela (com Gemini Vision)
+
+   As ferramentas sao somente leitura. Acoes que mudam o sistema
+   (abrir, fechar, criar, apagar) continuam no fluxo de comandos.
+
+   O Atlas aciona as ferramentas de duas formas:
+     - Automaticamente, quando a pergunta casa com o assunto
+       ("como esta a CPU", "qual o meu IP", "que horas sao").
+     - Pelo proprio modelo, quando ele pede um dado que nao tem
+       (ex: [[FERRAMENTA: rede]]). O resultado real volta para ele
+       e a resposta final sai com o dado confirmado.
+
+3) BUSCA COM FONTES
+   Quando o Atlas pesquisa, a resposta e montada APENAS com os
+   resultados da busca, com a fonte citada. Se a busca nao responder
+   a pergunta, ele diz que nao encontrou informacao confiavel.
+
+4) PROIBIDO AFIRMAR SEM CONFIRMACAO
+   O Atlas nao diz "abri", "instalei" ou "deu certo" sem o resultado
+   real da acao. Preferir "nao tenho certeza" a uma resposta errada.
+
+5) RESPOSTA DE CODIGO
+   O modelo nao tem acesso a um terminal de execucao. O codigo gerado
+   so e executado pelo fluxo explicito de comando, e o resultado real
+   da execucao e o que aparece para o Senhor.
+
+DICA: o modelo padrao (llama3.2) e pequeno e erra mais. Para respostas
+mais precisas, troque o provedor para Gemini nas configuracoes.
+
+
+============================================================
   TROUBLESHOOTING (Problemas Comuns)
 ============================================================
 
@@ -226,6 +283,7 @@ IMPORTANTE: nunca coloque a chave da API no GitHub.
   |-- terminal.py          <- Interface de terminal
   |-- gui.py               <- Interface grafica
   |-- brain.py             <- Inteligencia artificial (Ollama)
+  |-- tools.py             <- Ferramentas: dados reais do sistema
   |-- voice.py             <- Reconhecimento e síntese de voz
   |-- system_control.py    <- Controle do PC
   |-- file_manager.py      <- Gerenciamento de arquivos

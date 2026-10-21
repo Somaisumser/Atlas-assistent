@@ -146,6 +146,54 @@ Diga "Atlas" seguido do comando:
 
 
 ============================================================
+  VERACIDADE: O ATLAS NAO MENTE
+============================================================
+
+Para que o Atlas pare de inventar informacao, ele funciona em
+dois niveis:
+
+  Acoes deterministicas  - abrem/fecham programas, listam arquivos,
+                            monitoram o PC. Esses dados sao REAIS.
+
+  Conversa com a IA       - pode inventar. Por isso ela recebe:
+
+  1) CONTEXTO VERIFICADO
+     Data, hora, dia da semana, sistema e usuario sao injetados
+     na conversa. O modelo responde com base neles. Se o dado nao
+     estiver no contexto, ele diz "nao tenho essa informacao
+     confirmada" em vez de chutar.
+
+  2) FERRAMENTAS
+     O Atlas consulta o sistema de verdade quando a pergunta pede
+     um dado real: CPU, RAM, disco, temperatura, bateria, processos
+     abertos, espaco em disco, IP, arquivos, lembretes, tempo atual
+     da cidade (Open-Meteo, sem chave), internet e tela. O resultado
+     real e entregue ao modelo.
+
+     As ferramentas sao acionadas de duas formas:
+       - automaticamente, quando a pergunta casa com o assunto
+         ("como esta a CPU", "qual o meu IP", "que horas sao",
+         "qual a temperatura em Lisboa");
+       - pelo proprio modelo, quando ele pede um dado que nao tem,
+         escrevendo [[FERRAMENTA: rede]]. O resultado real volta
+         para ele antes da resposta final.
+
+     Todas as ferramentas sao somente leitura. Abrir, fechar,
+     criar e apagar continuam no fluxo de comandos normal.
+
+  3) BUSCA COM FONTES
+     Respostas de pesquisa sao montadas so com os resultados da
+     busca, citando a fonte. Se a busca nao responder, ele avisa.
+
+  4) SEM AFIRMAR SEM CONFIRMACAO
+     O Atlas nao diz "abri", "instalei" ou "deu certo" sem o
+     resultado real da acao.
+
+DICA: o modelo padrao (llama3.2) e pequeno e erra mais. Troque o
+provedor para Gemini nas configuracoes para respostas melhores.
+
+
+============================================================
   TROUBLESHOOTING (Problemas Comuns)
 ============================================================
 
@@ -198,6 +246,7 @@ Cada PC mantem seus proprios lembretes e configuracoes.
   |-- terminal.py          <- Interface de terminal
   |-- gui.py               <- Interface grafica
   |-- brain.py             <- Inteligencia artificial (Ollama)
+  |-- tools.py             <- Ferramentas: dados reais do sistema
   |-- voice.py             <- Reconhecimento e síntese de voz
   |-- system_control.py    <- Controle do PC
   |-- file_manager.py      <- Gerenciamento de arquivos

@@ -186,7 +186,8 @@ O ARQUIVO DEVE CONTER TODAS ESTAS FUNCOES:
 RETORNE O ARQUIVO COMPLETO INTEIRO:"""
 
     print(f"[Dev] Provider: {provider}, Modelo: {modelo}")
-    resposta = chat(prompt, provider=provider, api_key=api_key, modelo=modelo)
+    resposta = chat(prompt, provider=provider, api_key=api_key, modelo=modelo,
+                    perfil="tecnico", temperature=0.1)
     
     if not resposta:
         print("[Dev] Resposta vazia do chat")

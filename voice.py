@@ -2,9 +2,11 @@ import speech_recognition as sr
 import pyttsx3
 import edge_tts
 import asyncio
+import re
 import threading
 import tempfile
 import os
+import time
 import pygame
 import io
 import wave
@@ -411,6 +413,32 @@ def listar_vozes() -> str:
     for nome, voz_id in VOZES.items():
         linhas.append(f"  - {nome}: {voz_id}")
     return "Vozes disponiveis:\n" + "\n".join(linhas)
+
+
+def extrair_nome_voz(texto: str) -> str | None:
+    """Extrai o nome de uma voz a partir de um comando de troca.
+
+    Aceita as formas documentadas, com ou sem preposicao:
+      "trocar voz Antonio"      -> "Antonio"
+      "trocar voz para Antonio" -> "Antonio"
+      "mudar voz para Francisca"-> "Francisca"
+
+    Retorna None se o comando nao for de troca ou se a voz nao existir.
+    """
+    if not texto:
+        return None
+    m = re.match(
+        r"(?:troca|trocar|muda|mudar|altera|alterar|coloca|colocar|use|usar)"
+        r"\s+(?:a\s+|o\s+)?voz\s+(.+)",
+        texto.lower().strip(),
+    )
+    if not m:
+        return None
+    nome = m.group(1).strip()
+    # Tira a preposicao: "para Antonio" -> "Antonio"
+    nome = re.sub(r"^(?:para|pra|com|em)\s+(?:o\s+|a\s+)?", "", nome).strip()
+    nome = nome.title()
+    return nome if nome in VOZES else None
 
 
 def listar_motores_fala() -> str:

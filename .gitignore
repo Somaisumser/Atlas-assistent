@@ -2,6 +2,8 @@ venv/
 __pycache__/
 *.pyc
 backups/
+backup_*/
+backup_*/
 lembretes.json
 config.json
 .last_update_hash

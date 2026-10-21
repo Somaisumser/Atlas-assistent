@@ -586,9 +586,76 @@ def open_program(nome: str, monitor: int = None) -> str:
                 f"Caso queira, posso pesquisar na internet por Download de {nome}.")
 
 
+def _janelas_por_pid():
+    """Mapa PID -> {hwnd, titulo} das janelas visiveis.
+
+    Sem pywin32 instalado devolve vazio e o fechar funciona so pelo nome.
+    """
+    mapa = {}
+    try:
+        import win32gui
+        import win32process
+    except ImportError:
+        return mapa
+
+    def _ao_encontrar(hwnd, _):
+        try:
+            if not win32gui.IsWindowVisible(hwnd):
+                return
+            _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            titulo = win32gui.GetWindowText(hwnd)
+            if pid not in mapa or (titulo and not mapa[pid]["titulo"]):
+                mapa[pid] = {"hwnd": hwnd, "titulo": titulo}
+        except Exception:
+            pass
+
+    try:
+        win32gui.EnumWindows(_ao_encontrar, None)
+    except Exception:
+        pass
+    return mapa
+
+
+def _pedir_para_fechar(hwnd):
+    """Pede ao programa para encerrar so (WM_CLOSE), sem derrubar na marra."""
+    try:
+        import win32gui
+        win32gui.PostMessage(hwnd, 0x0010, 0, 0)  # WM_CLOSE
+        return True
+    except Exception:
+        return False
+
+
+def _bate_processo(alvo: str, nome: str, caminho: str, titulo: str) -> bool:
+    """Compara o pedido do Senhor com nome, caminho e janela do processo.
+
+    So o nome nao basta: o GOG Galaxy roda como GalaxyClient.exe. O nome
+    digitado aparece no caminho ("C:\\Program Files\\GOG Galaxy\\...") e no
+    titulo da janela ("GOG GALAXY"), e por isso os dois tambem contam.
+    """
+    alvo = (alvo or "").lower().replace(".exe", "").strip()
+    if not alvo:
+        return False
+
+    nome = (nome or "").lower().replace(".exe", "")
+    # Nome nos dois sentidos, para pegar apelidos ("edge" casa com "msedge").
+    if nome and (alvo in nome or nome in alvo):
+        return True
+
+    # Caminho e janela: so do pedido para dentro. Exige 4 letras para nao
+    # encerrar programa errado por causa de termo curto (um "a", um "e").
+    if len(alvo) >= 4:
+        for campo in (caminho, titulo):
+            if campo and alvo in campo.lower():
+                return True
+    return False
+
+
 def close_program(nome: str) -> str:
     """Fecha um programa pelo nome."""
     nome = nome.lower().strip()
+    if not nome:
+        return "Senhor, qual programa devo encerrar?"
     fechou = False
 
     # Mapeamento de nomes para processos
@@ -602,18 +669,41 @@ def close_program(nome: str) -> str:
         "steam": ["steam", "steam.exe"],
         "vs code": ["code", "code.exe"],
         "code": ["code", "code.exe"],
+        "gog galaxy": ["galaxyclient", "galaxy"],
+        "galaxy": ["galaxyclient"],
+        "calculadora": ["calc"],
+        "bloco de notas": ["notepad"],
     }
 
-    nomes_para_buscar = nomes_processo.get(nome, [nome])
+    nomes_para_buscar = list(nomes_processo.get(nome, [nome]))
+    if nome not in nomes_para_buscar:
+        nomes_para_buscar.append(nome)
 
-    for proc in psutil.process_iter(["name"]):
+    janelas = _janelas_por_pid()
+    alvos = []
+    for proc in psutil.process_iter(["name", "exe", "pid"]):
         try:
-            pname = proc.info["name"].lower().replace(".exe", "")
-            for n in nomes_para_buscar:
-                if n in pname or pname in n:
-                    proc.terminate()
+            info = proc.info
+            janela = janelas.get(info["pid"], {})
+            if any(_bate_processo(n, info["name"], info.get("exe"), janela.get("titulo"))
+                   for n in nomes_para_buscar):
+                alvos.append((proc, janela))
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+
+    for proc, janela in alvos:
+        try:
+            # Primeiro pede para encerrar, para o programa guardar o que
+            # estiver aberto (sessao, documento, download).
+            if janela.get("hwnd") and _pedir_para_fechar(janela["hwnd"]):
+                try:
+                    proc.wait(timeout=4)
                     fechou = True
-                    break
+                    continue
+                except psutil.TimeoutExpired:
+                    pass  # Ignorou o pedido; derruba mesmo assim.
+            proc.terminate()
+            fechou = True
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
